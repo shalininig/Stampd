@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head><title>Firebase Auth Test</title></head>
+<body>
+<h2>Firebase Auth Test</h2>
+<input type="email" id="email" placeholder="email" value="vjsri2517@gmail.com"><br><br>
+<input type="password" id="pass" placeholder="password"><br><br>
+<button onclick="testSignIn()">Test Sign In</button>
+<button onclick="testSignUp()">Test Sign Up (new@test.com)</button>
+<button onclick="testReset()">Test Reset Email</button>
+<pre id="output" style="margin-top:20px;background:#eee;padding:10px"></pre>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIx0A9gCjqyM",
+    authDomain: "stampd-e4353.firebaseapp.com",
+    projectId: "stampd-e4353",
+    storageBucket: "stampd-e4353.firebasestorage.app",
+    messagingSenderId: "272536856213",
+    appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
+  });
+
+  const auth = getAuth(app);
+  const log = (msg) => { document.getElementById('output').textContent += msg + '\n'; };
+
+  window.testSignIn = async () => {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('pass').value;
+    log('Trying sign in with: ' + email);
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      log('SUCCESS! UID: ' + cred.user.uid);
+    } catch(e) {
+      log('ERROR code: ' + e.code);
+      log('ERROR message: ' + e.message);
+    }
+  };
+
+  window.testSignUp = async () => {
+    log('Trying sign up with: newtest123@gmail.com');
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, 'newtest123@gmail.com', 'test123456');
+      log('SUCCESS! UID: ' + cred.user.uid);
+    } catch(e) {
+      log('ERROR code: ' + e.code);
+      log('ERROR message: ' + e.message);
+    }
+  };
+
+  window.testReset = async () => {
+    const email = document.getElementById('email').value;
+    log('Trying password reset for: ' + email);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      log('SUCCESS! Reset email sent.');
+    } catch(e) {
+      log('ERROR code: ' + e.code);
+      log('ERROR message: ' + e.message);
+    }
+  };
+</script>
+</body>
+</html>

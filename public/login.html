@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FF3008">
+<title>Stampd — Join Free</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root { --fire:#FF3008; --ember:#FF6B2B; --gold:#FFB830; --dark:#0D0500; --white:#fff; --muted:rgba(255,255,255,0.5); }
+html, body { height:100%; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--dark); color: var(--white);
+  min-height: 100vh; display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+}
+.bg-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 20% 20%, rgba(255,48,8,0.2) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 80%, rgba(255,184,48,0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+.bg-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(255,48,8,0.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,48,8,0.04) 1px, transparent 1px);
+  background-size: 44px 44px; pointer-events: none;
+}
+.container { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; padding: 0 28px; }
+.screen { display: none; flex-direction: column; flex: 1; }
+.screen.active { display: flex; }
+
+/* WELCOME */
+.welcome-top { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 0 20px; }
+.logo { font-family: 'Bebas Neue', cursive; font-size: 4rem; letter-spacing: 6px; background: linear-gradient(135deg, var(--fire), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+.tagline { font-size: 0.88rem; color: var(--muted); font-weight: 600; margin-bottom: 48px; line-height: 1.6; }
+
+/* SOCIAL PROOF STATS */
+.stats-block {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+.stat-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.stat-icon { font-size: 1.6rem; }
+.stat-number {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 1.9rem;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--fire), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stat-card.wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  gap: 14px;
+  padding: 16px 20px;
+  justify-content: center;
+}
+.stat-card.wide .stat-label { text-align: left; }
+
+.welcome-bottom { padding-bottom: 40px; }
+.btn-google { width: 100%; background: var(--white); color: #1a1a1a; border: none; padding: 15px; border-radius: 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; transition: all 0.2s; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.btn-google:active { transform: scale(0.98); }
+.btn-google:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-email { width: 100%; background: transparent; color: var(--white); border: 1.5px solid rgba(255,255,255,0.2); padding: 15px; border-radius: 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; margin-bottom: 20px; transition: all 0.2s; }
+.btn-email:active { border-color: var(--fire); color: var(--ember); }
+.divider { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.div-line { flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+.div-txt { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+.signin-link { text-align: center; font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+.signin-link span { color: var(--fire); font-weight: 800; cursor: pointer; }
+
+/* FORMS */
+.screen-header { padding: 20px 0 10px; display: flex; align-items: center; gap: 14px; }
+.back-btn { width: 36px; height: 36px; background: rgba(255,255,255,0.06); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; border: none; color: var(--white); flex-shrink: 0; }
+.screen-title { font-family: 'Bebas Neue', cursive; font-size: 1.8rem; letter-spacing: 2px; background: linear-gradient(135deg, var(--fire), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.form-body { flex: 1; padding: 10px 0; }
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 7px; display: block; }
+.form-input { width: 100%; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 16px; color: var(--white); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.95rem; font-weight: 600; outline: none; transition: all 0.2s; }
+.form-input::placeholder { color: rgba(255,255,255,0.2); }
+.form-input:focus { border-color: var(--fire); background: rgba(255,48,8,0.08); }
+.btn-primary { width: 100%; background: linear-gradient(135deg, var(--fire), var(--ember)); color: white; border: none; padding: 16px; border-radius: 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1rem; cursor: pointer; box-shadow: 0 8px 24px rgba(255,48,8,0.4); transition: all 0.2s; margin-top: 8px; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.terms-txt { text-align: center; font-size: 0.72rem; color: rgba(255,255,255,0.3); font-weight: 500; margin-top: 14px; line-height: 1.6; }
+.terms-txt span { color: var(--fire); }
+.toast { background: rgba(255,48,8,0.15); border: 1px solid rgba(255,48,8,0.3); border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; font-weight: 600; color: #ffb3a0; margin-top: 12px; display: none; line-height: 1.5; }
+.toast.show { display: block; }
+.toast.success-toast { background: rgba(0,200,100,0.12); border-color: rgba(0,200,100,0.3); color: #80ffbc; }
+
+/* SUCCESS */
+.success-screen { align-items: center; justify-content: center; text-align: center; padding: 40px 0; }
+.success-icon { width: 90px; height: 90px; background: linear-gradient(135deg, var(--fire), var(--ember)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 24px; box-shadow: 0 12px 40px rgba(255,48,8,0.4); }
+.success-title { font-family: 'Bebas Neue', cursive; font-size: 3rem; letter-spacing: 3px; background: linear-gradient(135deg, var(--fire), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
+.success-msg { font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.7; margin-bottom: 40px; max-width: 280px; }
+.success-perks { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 20px; margin-bottom: 28px; text-align: left; }
+.perk { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.8); }
+.perk:last-child { border-bottom: none; }
+.perk-icon { font-size: 1.2rem; width: 28px; text-align: center; }
+.go-btn { width: 100%; background: linear-gradient(135deg, var(--fire), var(--ember)); color: white; border: none; padding: 16px; border-radius: 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1rem; cursor: pointer; box-shadow: 0 8px 24px rgba(255,48,8,0.4); }
+.google-icon { width: 20px; height: 20px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
+<div class="container">
+
+  <!-- WELCOME -->
+  <div class="screen active" id="sc-welcome">
+    <div class="welcome-top">
+      <div class="logo">STAMPD</div>
+      <div class="tagline">Collect stamps at your favourite<br>Wellington businesses. Earn rewards.</div>
+
+      <!-- SOCIAL PROOF STATS -->
+      <div class="stats-block">
+        <div class="stat-card">
+          <div class="stat-icon">🏪</div>
+          <div class="stat-number">50+</div>
+          <div class="stat-label">Local businesses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎁</div>
+          <div class="stat-number">2K+</div>
+          <div class="stat-label">Rewards claimed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📱</div>
+          <div class="stat-number">5K+</div>
+          <div class="stat-label">Stamps collected</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⭐</div>
+          <div class="stat-number">FREE</div>
+          <div class="stat-label">Always free for customers</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="welcome-bottom">
+      <button class="btn-google" id="btn-google-welcome" onclick="handleGoogleSignIn()">
+        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+      <div class="divider">
+        <div class="div-line"></div><div class="div-txt">or</div><div class="div-line"></div>
+      </div>
+      <button class="btn-email" onclick="goTo('sc-signup')">✉️ Sign up with Email</button>
+      <div class="signin-link">Already have an account? <span onclick="goTo('sc-signin')">Sign in</span></div>
+    </div>
+  </div>
+
+  <!-- SIGN UP -->
+  <div class="screen" id="sc-signup">
+    <div class="screen-header">
+      <button class="back-btn" onclick="goTo('sc-welcome')">←</button>
+      <div class="screen-title">CREATE ACCOUNT</div>
+    </div>
+    <div class="form-body">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" type="text" id="reg-name" placeholder="e.g. Sarah Smith" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" type="email" id="reg-email" placeholder="sarah@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input class="form-input" type="tel" id="reg-phone" placeholder="021 123 4567" autocomplete="tel">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="reg-pass" placeholder="Min. 6 characters" autocomplete="new-password">
+      </div>
+      <button class="btn-primary" id="btn-signup" onclick="handleSignup()">🚀 Create My Account Free</button>
+      <div class="toast" id="signup-toast"></div>
+      <div class="terms-txt">By signing up you agree to our <span>Terms of Service</span> and <span>Privacy Policy</span></div>
+    </div>
+  </div>
+
+  <!-- SIGN IN -->
+  <div class="screen" id="sc-signin">
+    <div class="screen-header">
+      <button class="back-btn" onclick="goTo('sc-welcome')">←</button>
+      <div class="screen-title">WELCOME BACK</div>
+    </div>
+    <div class="form-body">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" type="email" id="login-email" placeholder="sarah@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="login-pass" placeholder="Your password" autocomplete="current-password">
+      </div>
+      <div style="text-align:right;margin-bottom:20px">
+        <span style="font-size:0.78rem;color:var(--fire);font-weight:700;cursor:pointer" onclick="handleForgotPassword()">Forgot password?</span>
+      </div>
+      <button class="btn-primary" id="btn-signin" onclick="handleSignin()">Sign In →</button>
+      <div class="toast" id="signin-toast"></div>
+      <div class="terms-txt" style="margin-top:20px">
+        Don't have an account? <span style="color:var(--fire);font-weight:800;cursor:pointer" onclick="goTo('sc-signup')">Sign up free</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="screen success-screen" id="sc-success">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">YOU'RE IN!</div>
+    <div class="success-msg" id="success-name-msg">Welcome to Stampd! You're all set to start collecting stamps at Wellington's best businesses.</div>
+    <div class="success-perks">
+      <div class="perk"><div class="perk-icon">📍</div>Discover stamp cards near you</div>
+      <div class="perk"><div class="perk-icon">📱</div>Scan QR codes to collect stamps</div>
+      <div class="perk"><div class="perk-icon">🎁</div>Earn free rewards at your favourites</div>
+      <div class="perk"><div class="perk-icon">🔔</div>Get notified of special offers</div>
+    </div>
+    <button class="go-btn" onclick="window.location.href='customer-app.html'">Start Collecting Stamps →</button>
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    GoogleAuthProvider, signInWithPopup, updateProfile, sendPasswordResetEmail
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIx0A9gCjqyM",
+    authDomain: "stampd-e4353.firebaseapp.com",
+    projectId: "stampd-e4353",
+    storageBucket: "stampd-e4353.firebasestorage.app",
+    messagingSenderId: "272536856213",
+    appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  function showToast(id, msg, isSuccess = false) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'toast show' + (isSuccess ? ' success-toast' : '');
+  }
+  function hideToast(id) { document.getElementById(id).className = 'toast'; }
+  function setLoading(btnId, loading, origText) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.textContent = loading ? '⏳ Please wait…' : origText;
+  }
+
+  async function saveCustomerProfile(uid, name, email, phone) {
+    const ref = doc(db, 'customers', uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        uid, name: name || '', email: email || '',
+        phone: phone || '', city: 'Wellington',
+        registeredAt: serverTimestamp(),
+        totalStamps: 0, totalRewards: 0
+      });
+    }
+  }
+
+  function showSuccess(name) {
+    const first = (name || 'there').split(' ')[0];
+    document.getElementById('success-name-msg').textContent =
+      `Welcome ${first}! You're all set to start collecting stamps at Wellington's best businesses.`;
+    goTo('sc-success');
+  }
+
+  function friendlyError(code) {
+    const map = {
+      'auth/email-already-in-use':  '⚠️ That email is already registered. Try signing in instead.',
+      'auth/invalid-email':          '⚠️ That doesn\'t look like a valid email address.',
+      'auth/weak-password':          '⚠️ Please choose a stronger password (min. 6 characters).',
+      'auth/user-not-found':         '⚠️ No account found with that email.',
+      'auth/wrong-password':         '⚠️ Incorrect password. Try again or reset it.',
+      'auth/invalid-credential':     '⚠️ Email or password is incorrect.',
+      'auth/too-many-requests':      '⚠️ Too many attempts. Please wait a moment and try again.',
+      'auth/network-request-failed': '⚠️ Network error. Check your connection and try again.',
+      'auth/popup-blocked':          '⚠️ Pop-up was blocked. Please allow pop-ups for this site.',
+    };
+    return map[code] || '⚠️ Something went wrong. Please try again.';
+  }
+
+  window.handleSignup = async function() {
+    const name  = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const phone = document.getElementById('reg-phone').value.trim();
+    const pass  = document.getElementById('reg-pass').value;
+    hideToast('signup-toast');
+    if (!name || !email || !pass) { showToast('signup-toast', '⚠️ Please fill in your name, email and password.'); return; }
+    if (pass.length < 6) { showToast('signup-toast', '⚠️ Password must be at least 6 characters.'); return; }
+    setLoading('btn-signup', true, '🚀 Create My Account Free');
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, { displayName: name });
+      await saveCustomerProfile(cred.user.uid, name, email, phone);
+      showSuccess(name);
+    } catch (e) {
+      setLoading('btn-signup', false, '🚀 Create My Account Free');
+      showToast('signup-toast', friendlyError(e.code));
+    }
+  };
+
+  window.handleSignin = async function() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-pass').value;
+    hideToast('signin-toast');
+    if (!email || !pass) { showToast('signin-toast', '⚠️ Please enter your email and password.'); return; }
+    setLoading('btn-signin', true, 'Sign In →');
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      showSuccess(cred.user.displayName || email.split('@')[0]);
+    } catch (e) {
+      setLoading('btn-signin', false, 'Sign In →');
+      showToast('signin-toast', friendlyError(e.code));
+    }
+  };
+
+  window.handleGoogleSignIn = async function() {
+    const btn = document.getElementById('btn-google-welcome');
+    btn.disabled = true;
+    const orig = btn.innerHTML;
+    btn.textContent = '⏳ Connecting…';
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      await saveCustomerProfile(user.uid, user.displayName, user.email, user.phoneNumber || '');
+      showSuccess(user.displayName);
+    } catch (e) {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+        alert(friendlyError(e.code));
+      }
+    }
+  };
+
+  window.handleForgotPassword = async function() {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) { showToast('signin-toast', '⚠️ Enter your email above first, then tap Forgot password.'); return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      showToast('signin-toast', '✅ Reset email sent! Check your inbox.', true);
+    } catch (e) {
+      showToast('signin-toast', friendlyError(e.code));
+    }
+  };
+</script>
+
+<script>
+  function goTo(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>

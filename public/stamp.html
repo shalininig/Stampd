@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FF3008">
+<title>Stampd — Collect Your Stamp</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root { --fire:#FF3008; --ember:#FF6B2B; --gold:#FFB830; --dark:#0D0500; --white:#fff; --muted:rgba(255,255,255,0.5); }
+html, body { height:100%; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--dark); color: var(--white);
+  min-height: 100vh; display: flex; flex-direction: column;
+  position: relative;
+}
+.bg-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 20% 20%, rgba(255,48,8,0.2) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 80%, rgba(255,184,48,0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+.bg-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(255,48,8,0.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,48,8,0.04) 1px, transparent 1px);
+  background-size: 44px 44px; pointer-events: none;
+}
+.container {
+  position: relative; z-index: 2; flex: 1;
+  display: flex; flex-direction: column;
+  padding: 0 24px; max-width: 480px;
+  margin: 0 auto; width: 100%;
+}
+
+/* SCREENS */
+.screen { display: none; flex-direction: column; flex: 1; }
+.screen.active { display: flex; }
+
+/* LOADING */
+.loading-screen {
+  align-items: center; justify-content: center; gap: 16px;
+}
+.spinner {
+  width: 52px; height: 52px;
+  border: 3px solid rgba(255,48,8,0.2);
+  border-top-color: var(--fire);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-txt { font-size: 0.88rem; color: var(--muted); font-weight: 600; }
+
+/* BIZ HEADER */
+.biz-header {
+  padding: 32px 0 24px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  margin-bottom: 28px;
+}
+.biz-logo {
+  width: 64px; height: 64px;
+  background: rgba(255,184,48,0.12);
+  border: 1px solid rgba(255,184,48,0.25);
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  margin: 0 auto 14px;
+}
+.biz-name {
+  font-family: 'Bebas Neue', cursive; font-size: 1.8rem;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--fire), var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+}
+.biz-type { font-size: 0.75rem; color: var(--muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+/* STAMP CARD */
+.stamp-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; padding: 22px;
+  margin-bottom: 24px;
+}
+.card-label {
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 14px;
+}
+.stamps-grid {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 14px;
+}
+.stamp-dot {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.stamp-dot.earned {
+  background: linear-gradient(135deg, var(--fire), var(--ember));
+  border-color: var(--fire);
+  box-shadow: 0 3px 10px rgba(255,48,8,0.35);
+}
+.stamp-dot.new-stamp {
+  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.stamp-dot.reward {
+  background: linear-gradient(135deg, var(--gold), #ffcf52);
+  border-color: var(--gold);
+  box-shadow: 0 3px 10px rgba(255,184,48,0.4);
+}
+.progress-txt {
+  font-size: 0.8rem; font-weight: 700;
+  color: rgba(255,184,48,0.9);
+}
+
+/* PIN SCREEN */
+.pin-header {
+  padding: 40px 0 20px; text-align: center;
+}
+.pin-title {
+  font-family: 'Bebas Neue', cursive; font-size: 2.2rem;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--fire), var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.pin-sub { font-size: 0.85rem; color: var(--muted); font-weight: 600; line-height: 1.6; }
+.pin-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 40px; }
+
+.pin-dots {
+  display: flex; gap: 16px; margin-bottom: 40px;
+}
+.pin-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25);
+  transition: all 0.2s;
+}
+.pin-dot.filled {
+  background: var(--fire);
+  border-color: var(--fire);
+  box-shadow: 0 0 10px rgba(255,48,8,0.5);
+}
+.pin-dot.error {
+  background: #ff4444;
+  border-color: #ff4444;
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.numpad {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; width: 100%; max-width: 280px;
+}
+.num-btn {
+  aspect-ratio: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.4rem; font-weight: 800;
+  color: var(--white); cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.num-btn:active { background: rgba(255,48,8,0.2); border-color: var(--fire); transform: scale(0.94); }
+.num-btn.del { font-size: 1rem; }
+.num-btn.empty { background: transparent; border: none; cursor: default; }
+
+.pin-error {
+  font-size: 0.82rem; font-weight: 700;
+  color: #ff6b6b; margin-bottom: 16px; min-height: 20px; text-align: center;
+}
+
+/* SUCCESS SCREEN */
+.success-screen {
+  align-items: center; justify-content: center;
+  text-align: center; padding: 32px 0;
+}
+.success-burst {
+  width: 100px; height: 100px;
+  background: linear-gradient(135deg, var(--fire), var(--ember));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem; margin: 0 auto 24px;
+  box-shadow: 0 14px 40px rgba(255,48,8,0.5);
+  animation: burst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes burst {
+  0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.success-title {
+  font-family: 'Bebas Neue', cursive; font-size: 3rem; letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--fire), var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.success-msg { font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.7; margin-bottom: 32px; }
+.success-card-wrap { width: 100%; margin-bottom: 28px; }
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, var(--fire), var(--ember));
+  color: white; border: none; padding: 16px; border-radius: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800; font-size: 1rem; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255,48,8,0.4);
+}
+
+/* REWARD SCREEN */
+.reward-screen {
+  align-items: center; justify-content: center;
+  text-align: center; padding: 32px 0;
+}
+.reward-burst {
+  width: 110px; height: 110px;
+  background: linear-gradient(135deg, var(--gold), #ffcf52);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem; margin: 0 auto 24px;
+  box-shadow: 0 14px 40px rgba(255,184,48,0.5);
+  animation: burst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.reward-title {
+  font-family: 'Bebas Neue', cursive; font-size: 2.8rem; letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--gold), #ffcf52);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.reward-msg { font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.7; margin-bottom: 24px; }
+.reward-box {
+  background: rgba(255,184,48,0.1);
+  border: 1px solid rgba(255,184,48,0.3);
+  border-radius: 16px; padding: 20px; margin-bottom: 28px; width: 100%;
+}
+.reward-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,184,48,0.6); margin-bottom: 6px; }
+.reward-value { font-family: 'Bebas Neue', cursive; font-size: 1.8rem; letter-spacing: 2px; color: var(--gold); }
+
+/* ALREADY STAMPED */
+.already-screen {
+  align-items: center; justify-content: center;
+  text-align: center; padding: 32px 0;
+}
+.already-icon {
+  width: 90px; height: 90px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; margin: 0 auto 24px;
+}
+.already-title {
+  font-family: 'Bebas Neue', cursive; font-size: 2.4rem; letter-spacing: 3px;
+  color: var(--white); margin-bottom: 10px;
+}
+.already-msg { font-size: 0.88rem; color: var(--muted); font-weight: 600; line-height: 1.7; margin-bottom: 32px; }
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
+<div class="container">
+
+  <!-- LOADING -->
+  <div class="screen active loading-screen" id="sc-loading">
+    <div class="spinner"></div>
+    <div class="loading-txt">Loading stamp card…</div>
+  </div>
+
+  <!-- PIN ENTRY -->
+  <div class="screen" id="sc-pin">
+    <div class="pin-header">
+      <div class="biz-logo" id="pin-biz-logo">🏪</div>
+      <div class="biz-name" id="pin-biz-name">Business</div>
+      <div class="biz-type" id="pin-biz-type">Loading…</div>
+    </div>
+    <div class="pin-body">
+      <div class="pin-title">ENTER STAFF PIN</div>
+      <div class="pin-sub" style="margin-bottom:28px">Ask a staff member for today's PIN<br>to collect your stamp</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-error" id="pin-error"></div>
+      <div class="numpad">
+        <button class="num-btn" onclick="pinPress('1')">1</button>
+        <button class="num-btn" onclick="pinPress('2')">2</button>
+        <button class="num-btn" onclick="pinPress('3')">3</button>
+        <button class="num-btn" onclick="pinPress('4')">4</button>
+        <button class="num-btn" onclick="pinPress('5')">5</button>
+        <button class="num-btn" onclick="pinPress('6')">6</button>
+        <button class="num-btn" onclick="pinPress('7')">7</button>
+        <button class="num-btn" onclick="pinPress('8')">8</button>
+        <button class="num-btn" onclick="pinPress('9')">9</button>
+        <button class="num-btn empty"></button>
+        <button class="num-btn" onclick="pinPress('0')">0</button>
+        <button class="num-btn del" onclick="pinDelete()">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS — STAMP ADDED -->
+  <div class="screen success-screen" id="sc-success">
+    <div class="success-burst">🔥</div>
+    <div class="success-title">STAMPED!</div>
+    <div class="success-msg" id="success-msg">Stamp added to your card!</div>
+    <div class="success-card-wrap">
+      <div class="stamp-card">
+        <div class="card-label" id="success-card-label">Your stamp card</div>
+        <div class="stamps-grid" id="success-stamps"></div>
+        <div class="progress-txt" id="success-progress"></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="window.location.href='customer-app.html'">View My Full Card →</button>
+  </div>
+
+  <!-- REWARD EARNED -->
+  <div class="screen reward-screen" id="sc-reward">
+    <div class="reward-burst">🎁</div>
+    <div class="reward-title">REWARD EARNED!</div>
+    <div class="reward-msg" id="reward-msg">You've completed your stamp card!</div>
+    <div class="reward-box">
+      <div class="reward-label">Your reward at</div>
+      <div class="reward-value" id="reward-biz-name">Business</div>
+      <div style="font-size:1rem;font-weight:800;color:rgba(255,255,255,0.8);margin-top:8px" id="reward-value">Free item</div>
+    </div>
+    <div style="font-size:0.8rem;color:var(--muted);font-weight:600;line-height:1.6;margin-bottom:24px">
+      Show this screen to staff to claim your reward. Your stamp card has been reset for your next round! 🎉
+    </div>
+    <button class="btn-primary" onclick="window.location.href='customer-app.html'">View My Cards →</button>
+  </div>
+
+  <!-- ALREADY STAMPED TODAY -->
+  <div class="screen already-screen" id="sc-already">
+    <div class="already-icon">📅</div>
+    <div class="already-title">ALREADY STAMPED!</div>
+    <div class="already-msg" id="already-msg">You've already collected a stamp here today. Come back tomorrow for your next one!</div>
+    <div class="stamp-card">
+      <div class="card-label" id="already-card-label">Your current card</div>
+      <div class="stamps-grid" id="already-stamps"></div>
+      <div class="progress-txt" id="already-progress"></div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="screen already-screen" id="sc-error">
+    <div class="already-icon">⚠️</div>
+    <div class="already-title">OOPS!</div>
+    <div class="already-msg" id="error-msg">Something went wrong. Please try scanning again.</div>
+    <button class="btn-primary" onclick="window.location.reload()">Try Again</button>
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc,
+    serverTimestamp, increment
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIx0A9gCjqyM",
+    authDomain: "stampd-e4353.firebaseapp.com",
+    projectId: "stampd-e4353",
+    storageBucket: "stampd-e4353.firebasestorage.app",
+    messagingSenderId: "272536856213",
+    appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Get vendor ID from URL
+  const params = new URLSearchParams(window.location.search);
+  const vendorId = params.get('v');
+
+  // State
+  let vendorData = null;
+  let customerUid = null;
+  let cardData = null;
+  let pinEntered = '';
+
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  // BIZ TYPE EMOJI
+  function bizEmoji(type) {
+    const map = {
+      'Café / Coffee Shop': '☕', 'Restaurant': '🍽️', 'Bar / Pub': '🍺',
+      'Retail Store': '🛍️', 'Hair & Beauty Salon': '💇', 'Gym / Fitness Studio': '💪',
+      'Bakery': '🥐', 'Food Truck': '🚚', 'Other': '🏪'
+    };
+    return map[type] || '🏪';
+  }
+
+  // RENDER STAMP GRID
+  function renderStamps(containerId, stampsEarned, goal) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    for (let i = 0; i < goal; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'stamp-dot' + (i < stampsEarned ? ' earned' : '');
+      if (i === stampsEarned - 1) dot.classList.add('new-stamp');
+      dot.textContent = i < stampsEarned ? '🔥' : '';
+      if (i === goal - 1) {
+        dot.textContent = i < stampsEarned ? '🎁' : '🎁';
+        if (i < stampsEarned) dot.classList.add('reward');
+        else dot.classList.remove('earned');
+      }
+      container.appendChild(dot);
+    }
+  }
+
+  // SHOW SCREEN
+  function goTo(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // SHOW ERROR
+  function showError(msg) {
+    document.getElementById('error-msg').textContent = msg;
+    goTo('sc-error');
+  }
+
+  // ADD STAMP TO FIRESTORE
+  async function addStamp() {
+    const goal = vendorData.stampGoal || 10;
+    const cardId = `${customerUid}_${vendorId}`;
+    const cardRef = doc(db, 'stampCards', cardId);
+
+    try {
+      const snap = await getDoc(cardRef);
+      let currentStamps = 0;
+
+      if (snap.exists()) {
+        const data = snap.data();
+
+        // Check one-per-day rule
+        if (data.lastStampDate === today) {
+          // Already stamped today
+          cardData = data;
+          const earned = data.stamps || 0;
+          renderStamps('already-stamps', earned, goal);
+          document.getElementById('already-card-label').textContent = vendorData.businessName + ' stamp card';
+          const remaining = goal - 1 - earned;
+          document.getElementById('already-progress').textContent =
+            remaining > 0 ? `${earned} of ${goal-1} — ${remaining} more for your reward!` : 'Reward ready to claim! 🎁';
+          goTo('sc-already');
+          return;
+        }
+        currentStamps = data.stamps || 0;
+      }
+
+      const newStamps = currentStamps + 1;
+      const isReward = newStamps >= goal;
+
+      // Write to Firestore
+      await setDoc(cardRef, {
+        customerUid,
+        vendorId,
+        vendorName: vendorData.businessName,
+        stamps: isReward ? 0 : newStamps, // Reset after reward
+        lastStampDate: today,
+        totalLifetimeStamps: increment(1),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      if (isReward) {
+        // Reward screen
+        document.getElementById('reward-biz-name').textContent = vendorData.businessName;
+        document.getElementById('reward-value').textContent = vendorData.reward || 'Free item — ask staff!';
+        document.getElementById('reward-msg').textContent =
+          `You collected all ${goal} stamps at ${vendorData.businessName}!`;
+        goTo('sc-reward');
+      } else {
+        // Success screen
+        renderStamps('success-stamps', newStamps, goal);
+        document.getElementById('success-card-label').textContent = vendorData.businessName + ' stamp card';
+        const remaining = (goal - 1) - newStamps;
+        document.getElementById('success-msg').textContent =
+          `Stamp ${newStamps} added to your card at ${vendorData.businessName}!`;
+        document.getElementById('success-progress').textContent =
+          remaining > 0 ? `${newStamps} of ${goal-1} — ${remaining} more for your reward!` : 'One more stamp for your reward! 🎁';
+        goTo('sc-success');
+      }
+
+    } catch (e) {
+      console.error(e);
+      showError('Could not add your stamp. Please try again.');
+    }
+  }
+
+  // PIN LOGIC
+  window.pinPress = function(digit) {
+    if (pinEntered.length >= 4) return;
+    pinEntered += digit;
+    updatePinDots();
+    if (pinEntered.length === 4) {
+      setTimeout(checkPin, 200);
+    }
+  };
+
+  window.pinDelete = function() {
+    pinEntered = pinEntered.slice(0, -1);
+    updatePinDots();
+    document.getElementById('pin-error').textContent = '';
+  };
+
+  function updatePinDots() {
+    for (let i = 0; i < 4; i++) {
+      const dot = document.getElementById('pd' + i);
+      dot.className = 'pin-dot' + (i < pinEntered.length ? ' filled' : '');
+    }
+  }
+
+  function checkPin() {
+    if (pinEntered === String(vendorData.pin)) {
+      addStamp();
+    } else {
+      // Wrong PIN
+      for (let i = 0; i < 4; i++) {
+        document.getElementById('pd' + i).className = 'pin-dot error';
+      }
+      document.getElementById('pin-error').textContent = '⚠️ Wrong PIN — ask staff to try again';
+      setTimeout(() => {
+        pinEntered = '';
+        updatePinDots();
+        document.getElementById('pin-error').textContent = '';
+      }, 1200);
+    }
+  }
+
+  // INIT
+  if (!vendorId) {
+    showError('Invalid QR code. Please scan again.');
+  } else {
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // Redirect to customer login with return URL
+        window.location.href = `login.html?redirect=${encodeURIComponent(window.location.href)}`;
+        return;
+      }
+
+      customerUid = user.uid;
+
+      try {
+        // Fetch vendor data
+        const vendorSnap = await getDoc(doc(db, 'vendors', vendorId));
+        if (!vendorSnap.exists()) {
+          showError('This business could not be found. Please try scanning again.');
+          return;
+        }
+
+        vendorData = vendorSnap.data();
+        const emoji = bizEmoji(vendorData.businessType);
+
+        if (vendorData.requiresPin) {
+          // Show PIN screen
+          document.getElementById('pin-biz-logo').textContent = emoji;
+          document.getElementById('pin-biz-name').textContent = vendorData.businessName;
+          document.getElementById('pin-biz-type').textContent = vendorData.businessType || '';
+          goTo('sc-pin');
+        } else {
+          // No PIN — add stamp directly
+          await addStamp();
+        }
+
+      } catch (e) {
+        console.error(e);
+        showError('Something went wrong loading this stamp card.');
+      }
+    });
+  }
+</script>
+</body>
+</html>
