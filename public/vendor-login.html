@@ -286,17 +286,10 @@ body {
 
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import {
-    getAuth,
-    signInWithEmailAndPassword,
-    sendPasswordResetEmail
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import {
-    getFirestore, collection, query, where, getDocs
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
   const firebaseConfig = {
     apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIx0A9gCjqyM",
     authDomain: "stampd-e4353.firebaseapp.com",
@@ -306,9 +299,9 @@ body {
     appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
   /* ── helpers ── */
   function showToast(id, msg, isSuccess = false) {
@@ -339,8 +332,7 @@ body {
   /* ── fetch vendor business name from Firestore ── */
   async function getVendorName(email) {
     try {
-      const q = query(collection(db, 'vendors'), where('email', '==', email));
-      const snap = await getDocs(q);
+      const snap = await db.collection('vendors').where('email', '==', email).get();
       if (!snap.empty) {
         return snap.docs[0].data().businessName || snap.docs[0].data().ownerName || null;
       }
@@ -361,7 +353,7 @@ body {
 
     setLoading('btn-login', true, 'Log In to Dashboard →');
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      const cred = await auth.signInWithEmailAndPassword(email, pass);
 
       // Look up their business name from Firestore
       const bizName = await getVendorName(cred.user.email);
@@ -401,7 +393,7 @@ body {
 
     setLoading('btn-forgot', true, '📧 Send Reset Link');
     try {
-      await sendPasswordResetEmail(auth, email);
+      await auth.sendPasswordResetEmail(email);
       showToast('forgot-toast', '✅ Reset link sent! Check your inbox (and spam folder).', true);
       setLoading('btn-forgot', false, '📧 Send Reset Link');
     } catch (e) {
