@@ -992,7 +992,7 @@
       <p id="qr-modal-biz">Loading Vendor Context...</p>
       
       <div class="qr-placeholder" style="padding:12px">
-        <div id="qr-target" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"></div>
+        <canvas id="qr-target" style="width:100% !important;height:100% !important;"></canvas>
       </div>
 
       <button class="close-modal-btn" onclick="closeModal()">Dismiss View</button>
@@ -1051,12 +1051,11 @@
 
     document.getElementById('qr-modal-biz').textContent = name + ' · stampd.co.nz';
     
-    // Generate real QR code (encodes vendor UID, matching the mobile app)
-    const qrTarget = document.getElementById('qr-target');
-    if (qrTarget && window.QRCode && vendorUid) {
-      qrTarget.innerHTML = '';
-      QRCode.toCanvas(qrTarget, vendorUid, { width: 180, margin: 1 }, function(err, canvas) {
-        if (!err && canvas) qrTarget.appendChild(canvas);
+    // Fixed logic: target element passed correctly as first parameter
+    const qrCanvas = document.getElementById('qr-target');
+    if (qrCanvas && window.QRCode && vendorUid) {
+      QRCode.toCanvas(qrCanvas, vendorUid, { width: 180, margin: 1 }, function(err) {
+        if (err) console.error('QR Render Failed:', err);
       });
     }
 
