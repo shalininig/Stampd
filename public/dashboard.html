@@ -19,10 +19,8 @@
     --green: #22C55E;
     --blue: #3B82F6;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-
   body {
     font-family: 'DM Sans', sans-serif;
     background: var(--bg);
@@ -30,7 +28,6 @@
     display: flex;
     min-height: 100vh;
   }
-
   /* SIDEBAR */
   .sidebar {
     width: 240px;
@@ -43,12 +40,10 @@
     z-index: 50;
     transition: transform 0.3s;
   }
-
   .sidebar-logo {
     padding: 24px 20px;
     border-bottom: 1px solid var(--border);
   }
-
   .logo-text {
     font-family: 'Bebas Neue', cursive;
     font-size: 1.8rem;
@@ -57,7 +52,6 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-
   .logo-sub {
     font-size: 0.72rem;
     color: var(--muted);
@@ -65,7 +59,6 @@
     letter-spacing: 0.5px;
     margin-top: 2px;
   }
-
   .biz-card {
     margin: 16px;
     background: var(--surface2);
@@ -76,7 +69,6 @@
     align-items: center;
     gap: 10px;
   }
-
   .biz-avatar {
     width: 36px;
     height: 36px;
@@ -88,7 +80,6 @@
     font-size: 1rem;
     flex-shrink: 0;
   }
-
   .biz-name {
     font-weight: 700;
     font-size: 0.88rem;
@@ -97,18 +88,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
   .biz-type {
     font-size: 0.72rem;
     color: var(--muted);
     font-weight: 500;
   }
-
   .nav-section {
     padding: 8px 12px;
     margin-top: 8px;
   }
-
   .nav-label {
     font-size: 0.65rem;
     font-weight: 700;
@@ -118,7 +106,6 @@
     padding: 0 8px;
     margin-bottom: 6px;
   }
-
   .nav-item {
     display: flex;
     align-items: center;
@@ -133,26 +120,21 @@
     margin-bottom: 2px;
     border: 1px solid transparent;
   }
-
   .nav-item:hover {
     background: rgba(255,255,255,0.05);
     color: var(--text);
   }
-
   .nav-item.active {
     background: rgba(255,48,8,0.12);
     color: var(--fire);
     border-color: rgba(255,48,8,0.2);
   }
-
   .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
-
   .sidebar-footer {
     margin-top: auto;
     padding: 16px;
     border-top: 1px solid var(--border);
   }
-
   .plan-badge {
     background: rgba(255,184,48,0.1);
     border: 1px solid rgba(255,184,48,0.25);
@@ -163,7 +145,6 @@
     font-weight: 700;
     text-align: center;
   }
-
   /* MAIN */
   .main {
     margin-left: 240px;
@@ -171,7 +152,6 @@
     display: flex;
     flex-direction: column;
   }
-
   /* TOP BAR */
   .topbar {
     background: var(--surface);
@@ -184,25 +164,21 @@
     top: 0;
     z-index: 40;
   }
-
   .topbar-left h1 {
     font-size: 1.2rem;
     font-weight: 700;
   }
-
   .topbar-left p {
     font-size: 0.8rem;
     color: var(--muted);
     font-weight: 500;
     margin-top: 2px;
   }
-
   .topbar-right {
     display: flex;
     align-items: center;
     gap: 12px;
   }
-
   .notif-btn {
     width: 36px;
     height: 36px;
@@ -217,9 +193,7 @@
     transition: all 0.2s;
     position: relative;
   }
-
   .notif-btn:hover { border-color: var(--fire); }
-
   .notif-dot {
     position: absolute;
     top: 6px; right: 6px;
@@ -228,7 +202,6 @@
     border-radius: 50%;
     border: 2px solid var(--surface);
   }
-
   .qr-btn {
     background: linear-gradient(135deg, var(--fire), var(--ember));
     color: white;
@@ -244,27 +217,22 @@
     align-items: center;
     gap: 6px;
   }
-
   .qr-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(255,48,8,0.4);
   }
-
   /* CONTENT */
   .content {
     padding: 32px;
     flex: 1;
   }
-
   /* PAGES */
   .page { display: none; }
   .page.active { display: block; animation: fadeIn 0.3s ease; }
-
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
-
   /* STAT CARDS */
   .stats-row {
     display: grid;
@@ -272,7 +240,6 @@
     gap: 16px;
     margin-bottom: 24px;
   }
-
   .stat-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -282,24 +249,20 @@
     position: relative;
     overflow: hidden;
   }
-
   .stat-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
   }
-
   .stat-card.red::before { background: linear-gradient(90deg, var(--fire), var(--ember)); }
   .stat-card.gold::before { background: linear-gradient(90deg, var(--gold), #FFD97D); }
   .stat-card.green::before { background: linear-gradient(90deg, var(--green), #4ADE80); }
   .stat-card.blue::before { background: linear-gradient(90deg, var(--blue), #60A5FA); }
-
   .stat-card:hover {
     border-color: rgba(255,255,255,0.14);
     transform: translateY(-2px);
   }
-
   .stat-label {
     font-size: 0.75rem;
     font-weight: 700;
@@ -308,7 +271,6 @@
     margin-bottom: 10px;
     text-transform: uppercase;
   }
-
   .stat-value {
     font-family: 'Bebas Neue', cursive;
     font-size: 2.6rem;
@@ -316,12 +278,10 @@
     line-height: 1;
     margin-bottom: 8px;
   }
-
   .stat-card.red .stat-value { color: var(--fire); }
   .stat-card.gold .stat-value { color: var(--gold); }
   .stat-card.green .stat-value { color: var(--green); }
   .stat-card.blue .stat-value { color: var(--blue); }
-
   .stat-change {
     font-size: 0.78rem;
     font-weight: 600;
@@ -330,9 +290,7 @@
     align-items: center;
     gap: 4px;
   }
-
   .stat-change.down { color: var(--fire); }
-
   /* GRID 2COL */
   .grid-2 {
     display: grid;
@@ -340,14 +298,12 @@
     gap: 20px;
     margin-bottom: 20px;
   }
-
   .grid-3-1 {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 20px;
     margin-bottom: 20px;
   }
-
   /* CARD */
   .card {
     background: var(--surface);
@@ -355,19 +311,16 @@
     border-radius: 16px;
     padding: 24px;
   }
-
   .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
   }
-
   .card-title {
     font-weight: 700;
     font-size: 0.95rem;
   }
-
   .card-action {
     font-size: 0.78rem;
     color: var(--fire);
@@ -375,12 +328,9 @@
     cursor: pointer;
     transition: opacity 0.2s;
   }
-
   .card-action:hover { opacity: 0.7; }
-
   /* ACTIVITY LIST */
   .activity-list { display: flex; flex-direction: column; gap: 12px; }
-
   .activity-item {
     display: flex;
     align-items: center;
@@ -390,7 +340,6 @@
     border-radius: 12px;
     border: 1px solid var(--border);
   }
-
   .activity-avatar {
     width: 38px;
     height: 38px;
@@ -402,28 +351,24 @@
     font-size: 1rem;
     flex-shrink: 0;
   }
-
   .activity-info { flex: 1; }
-
   .activity-name {
     font-size: 0.88rem;
     font-weight: 700;
     margin-bottom: 2px;
   }
-
   .activity-detail {
     font-size: 0.75rem;
     color: var(--muted);
     font-weight: 500;
+    margin-top: 2px;
   }
-
   .activity-time {
     font-size: 0.72rem;
     color: var(--muted);
     font-weight: 600;
     white-space: nowrap;
   }
-
   .stamp-badge {
     background: rgba(255,48,8,0.12);
     border: 1px solid rgba(255,48,8,0.25);
@@ -434,7 +379,6 @@
     font-weight: 700;
     white-space: nowrap;
   }
-
   .reward-badge {
     background: rgba(255,184,48,0.12);
     border: 1px solid rgba(255,184,48,0.25);
@@ -445,7 +389,6 @@
     font-weight: 700;
     white-space: nowrap;
   }
-
   /* STAMP CARD PREVIEW */
   .stamp-card-preview {
     background: linear-gradient(135deg, #1a0800, #2a1000);
@@ -455,7 +398,6 @@
     position: relative;
     overflow: hidden;
   }
-
   .stamp-card-preview::before {
     content: '';
     position: absolute;
@@ -464,7 +406,6 @@
     background: radial-gradient(circle, rgba(255,48,8,0.2), transparent);
     border-radius: 50%;
   }
-
   .scp-biz {
     font-family: 'Bebas Neue', cursive;
     font-size: 1.4rem;
@@ -472,21 +413,18 @@
     color: var(--gold);
     margin-bottom: 4px;
   }
-
   .scp-reward {
     font-size: 0.8rem;
     color: rgba(255,255,255,0.6);
     font-weight: 600;
     margin-bottom: 20px;
   }
-
   .stamps-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 8px;
     margin-bottom: 16px;
   }
-
   .stamp {
     aspect-ratio: 1;
     border-radius: 50%;
@@ -498,13 +436,11 @@
     background: rgba(255,255,255,0.04);
     transition: all 0.3s;
   }
-
   .stamp.filled {
     background: linear-gradient(135deg, var(--fire), var(--ember));
     border-color: var(--fire);
     box-shadow: 0 0 12px rgba(255,48,8,0.3);
   }
-
   .scp-progress {
     display: flex;
     align-items: center;
@@ -513,7 +449,6 @@
     color: rgba(255,255,255,0.5);
     font-weight: 600;
   }
-
   .progress-bar {
     height: 4px;
     background: rgba(255,255,255,0.08);
@@ -521,14 +456,12 @@
     margin: 8px 0;
     overflow: hidden;
   }
-
   .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--fire), var(--gold));
     border-radius: 2px;
     width: 60%;
   }
-
   /* BAR CHART */
   .bar-chart {
     display: flex;
@@ -537,7 +470,6 @@
     height: 120px;
     padding-top: 10px;
   }
-
   .bar-col {
     flex: 1;
     display: flex;
@@ -547,7 +479,6 @@
     height: 100%;
     justify-content: flex-end;
   }
-
   .bar {
     width: 100%;
     border-radius: 6px 6px 0 0;
@@ -557,19 +488,16 @@
     cursor: pointer;
     min-height: 8px;
   }
-
   .bar:hover, .bar.active {
     background: linear-gradient(180deg, var(--fire), var(--ember));
     border-color: var(--fire);
   }
-
   .bar-label {
     font-size: 0.65rem;
     color: var(--muted);
     font-weight: 600;
     text-align: center;
   }
-
   /* TOP CUSTOMERS */
   .customer-row {
     display: flex;
@@ -578,140 +506,133 @@
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
   }
-
   .customer-row:last-child { border-bottom: none; }
-
   .customer-rank {
     font-family: 'Bebas Neue', cursive;
     font-size: 1.1rem;
     color: var(--muted);
-    width: 20px;
+    width: 24px;
     text-align: center;
   }
-
   .customer-rank.top { color: var(--gold); }
-
   .customer-avatar {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
+    background: var(--surface2);
     border-radius: 50%;
-    background: linear-gradient(135deg, #333, #555);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.9rem;
-    flex-shrink: 0;
   }
-
-  .customer-name {
-    flex: 1;
-    font-size: 0.88rem;
-    font-weight: 700;
-  }
-
-  .customer-visits {
-    font-size: 0.78rem;
-    color: var(--muted);
-    font-weight: 600;
-  }
-
-  .customer-stamps {
-    display: flex;
-    gap: 3px;
-  }
-
+  .customer-name { font-size: 0.85rem; font-weight: 600; flex: 1; }
+  .customer-visits { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+  .customer-stamps { display: flex; gap: 3px; }
   .mini-stamp {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+    width: 6px; height: 6px;
     background: var(--fire);
-    opacity: 0.7;
+    border-radius: 50%;
   }
-
-  /* NOTIFICATION FORM */
-  .notif-form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+  /* SETTINGS FORMS */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
   }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  .settings-section { margin-bottom: 28px; }
+  .settings-section h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text);
   }
-
+  .form-group { margin-bottom: 16px; }
   .form-label {
+    display: block;
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--muted);
-    letter-spacing: 0.5px;
+    margin-bottom: 6px;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
-
-  .form-input, .form-textarea, .form-select {
+  .form-input, .form-select {
+    width: 100%;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 12px 14px;
+    padding: 11px 14px;
     color: var(--text);
     font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 500;
-    outline: none;
     transition: all 0.2s;
-    width: 100%;
   }
-
-  .form-input:focus, .form-textarea:focus, .form-select:focus {
+  .form-input:focus, .form-select:focus {
+    outline: none;
     border-color: var(--fire);
-    background: rgba(255,48,8,0.06);
+    background: rgba(255,255,255,0.02);
   }
-
-  .form-input::placeholder, .form-textarea::placeholder {
-    color: rgba(255,255,255,0.2);
-  }
-
-  .form-textarea { resize: vertical; min-height: 90px; }
-
-  .form-select option { background: #1a1a1a; }
-
   .send-btn {
-    background: linear-gradient(135deg, var(--fire), var(--ember));
-    color: white;
-    border: none;
-    padding: 13px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 20px;
     border-radius: 10px;
     font-family: 'DM Sans', sans-serif;
     font-weight: 700;
-    font-size: 0.92rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
   }
-
-  .send-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(255,48,8,0.4);
+  .send-btn:hover { border-color: var(--fire); color: var(--fire); }
+  /* TOGGLE ROW */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
   }
-
-  /* QR CODE MODAL */
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-info { flex: 1; padding-right: 16px; }
+  .toggle-name { font-size: 0.88rem; font-weight: 600; }
+  .toggle-desc { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+  .toggle {
+    width: 44px; height: 24px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--fire); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    background: white;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(20px); }
+  /* MODAL */
   .modal-overlay {
-    display: none;
     position: fixed;
-    inset: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.8);
-    z-index: 200;
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
   }
-
-  .modal-overlay.open { display: flex; }
-
   .modal {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -722,7 +643,6 @@
     text-align: center;
     animation: fadeIn 0.3s ease;
   }
-
   .modal h2 {
     font-family: 'Bebas Neue', cursive;
     font-size: 2rem;
@@ -732,7 +652,6 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-
   .modal p {
     font-size: 0.85rem;
     color: var(--muted);
@@ -740,7 +659,6 @@
     margin-bottom: 28px;
     line-height: 1.6;
   }
-
   .qr-placeholder {
     width: 180px;
     height: 180px;
@@ -750,156 +668,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
     position: relative;
   }
-
-  .qr-inner {
+  .close-modal-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--text);
     width: 100%;
-    height: 100%;
-    background:
-      repeating-linear-gradient(0deg, #000 0px, #000 8px, #fff 8px, #fff 12px),
-      repeating-linear-gradient(90deg, #000 0px, #000 8px, #fff 8px, #fff 12px);
-    background-blend-mode: multiply;
-    border-radius: 4px;
-    opacity: 0.85;
-  }
-
-  .qr-corner {
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    border: 4px solid #000;
-    border-radius: 4px;
-  }
-
-  .qr-corner.tl { top: 16px; left: 16px; border-right: none; border-bottom: none; }
-  .qr-corner.tr { top: 16px; right: 16px; border-left: none; border-bottom: none; }
-  .qr-corner.bl { bottom: 16px; left: 16px; border-right: none; border-top: none; }
-
-  .modal-btns {
-    display: flex;
-    gap: 10px;
-  }
-
-  .modal-btn {
-    flex: 1;
     padding: 12px;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
+    border-radius: 12px;
     font-weight: 700;
     font-size: 0.88rem;
     cursor: pointer;
     transition: all 0.2s;
-    border: none;
+    margin-top: 8px;
   }
-
-  .modal-btn.primary {
-    background: linear-gradient(135deg, var(--fire), var(--ember));
-    color: white;
-  }
-
-  .modal-btn.secondary {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-
-  .modal-btn:hover { opacity: 0.85; transform: translateY(-1px); }
-
-  .modal-close {
-    position: absolute;
-    top: 16px; right: 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 1rem;
-    color: var(--muted);
-  }
-
-  .modal-close:hover { color: var(--text); }
-
-  /* SETTINGS PAGE */
-  .settings-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
-  .settings-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
-  }
-
-  .settings-section h3 {
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .toggle-row:last-child { border-bottom: none; }
-
-  .toggle-info {}
-  .toggle-name {
-    font-size: 0.88rem;
-    font-weight: 600;
-    margin-bottom: 3px;
-  }
-
-  .toggle-desc {
-    font-size: 0.75rem;
-    color: var(--muted);
-    font-weight: 500;
-  }
-
-  .toggle {
-    width: 44px;
-    height: 24px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 12px;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.3s;
-    flex-shrink: 0;
-  }
-
-  .toggle.on { background: var(--fire); }
-
-  .toggle::after {
-    content: '';
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    background: white;
-    border-radius: 50%;
-    top: 3px;
-    left: 3px;
-    transition: transform 0.3s;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  }
-
-  .toggle.on::after { transform: translateX(20px); }
-
-  /* MOBILE */
+  .close-modal-btn:hover { background: rgba(255,255,255,0.1); }
+  /* MOBILE HAMBURGER */
   .hamburger {
     display: none;
     background: none;
@@ -909,7 +694,6 @@
     cursor: pointer;
     padding: 4px;
   }
-
   @media (max-width: 900px) {
     .sidebar { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
@@ -924,372 +708,171 @@
 </head>
 <body>
 
-<!-- SIDEBAR -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-text">STAMPD</div>
-    <div class="logo-sub">Vendor Dashboard</div>
-  </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">STAMPD</div>
+      <div class="logo-sub">Vendor Dashboard</div>
+    </div>
+    <div class="biz-card">
+      <div class="biz-avatar" id="sidebar-biz-avatar">🏪</div>
+      <div>
+        <div class="biz-name" id="sidebar-biz-name">Loading…</div>
+        <div class="biz-type" id="sidebar-biz-type">Please wait</div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Main Menu</div>
+      <div class="nav-item active" onclick="switchPage('overview')">
+        <span class="nav-icon">📊</span> Overview
+      </div>
+      <div class="nav-item" onclick="switchPage('stampcard')">
+        <span class="nav-icon">💳</span> Stamp Card
+      </div>
+      <div class="nav-item" onclick="switchPage('notifications')">
+        <span class="nav-icon">🔔</span> Notifications
+      </div>
+      <div class="nav-item" onclick="switchPage('settings')">
+        <span class="nav-icon">⚙️</span> Settings
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="plan-badge">⚡ PREMIUM PLAN</div>
+      <div class="nav-item" onclick="handleLogout()" style="margin-top:12px;padding:8px 12px;color:var(--fire)">
+        <span class="nav-icon">🚪</span> Logout
+      </div>
+    </div>
+  </aside>
 
-  <div class="biz-card">
-    <div class="biz-avatar" id="sidebar-biz-avatar">☕</div>
-    <div>
-      <div class="biz-name" id="sidebar-biz-name">The Corner Café</div>
-      <div class="biz-type" id="sidebar-biz-type">Café · Wellington CBD</div>
-    </div>
-  </div>
-
-  <div class="nav-section">
-    <div class="nav-label">Main</div>
-    <div class="nav-item active" onclick="showPage('overview', this)">
-      <span class="nav-icon">📊</span> Overview
-    </div>
-    <div class="nav-item" onclick="showPage('customers', this)">
-      <span class="nav-icon">👥</span> Customers
-    </div>
-    <div class="nav-item" onclick="showPage('stampcard', this)">
-      <span class="nav-icon">🎟️</span> Stamp Card
-    </div>
-    <div class="nav-item" onclick="showPage('notifications', this)">
-      <span class="nav-icon">🔔</span> Notifications
-    </div>
-  </div>
-
-  <div class="nav-section">
-    <div class="nav-label">Account</div>
-    <div class="nav-item" onclick="showPage('settings', this)">
-      <span class="nav-icon">⚙️</span> Settings
-    </div>
-    <div class="nav-item" style="color: rgba(255,48,8,0.7)">
-      <span class="nav-icon">🚪</span> Log Out
-    </div>
-  </div>
-
-  <div class="sidebar-footer">
-    <button onclick="handleLogout()" style="width:100%;background:rgba(255,48,8,0.1);border:1px solid rgba(255,48,8,0.2);color:var(--fire);padding:10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:0.82rem;cursor:pointer;margin-bottom:10px">🚪 Log Out</button>
-    <div class="plan-badge">⭐ Founding Member Plan</div>
-  </div>
-</aside>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- TOPBAR -->
-  <div class="topbar">
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="main">
+    <header class="topbar">
       <div class="topbar-left">
-        <h1 id="page-title">Overview</h1>
-        <p id="page-sub">Welcome back! Here's what's happening today.</p>
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h1 id="topbar-title">Overview</h1>
+        <p id="topbar-date">Today · Loading date…</p>
       </div>
-    </div>
-    <div class="topbar-right">
-      <div class="notif-btn" title="Notifications">
-        🔔
-        <div class="notif-dot"></div>
+      <div class="topbar-right">
+        <div class="notif-btn" onclick="switchPage('notifications')">
+          🔔 <div class="notif-dot"></div>
+        </div>
+        <button class="qr-btn" onclick="openModal()">
+          🖨️ View QR Code
+        </button>
       </div>
-      <button class="qr-btn" onclick="openModal()">
-        🖨️ Print QR Code
-      </button>
-    </div>
-  </div>
+    </header>
 
-  <!-- CONTENT -->
-  <div class="content">
+    <main class="content">
 
-    <!-- OVERVIEW PAGE -->
-    <div class="page active" id="page-overview">
-      <div class="stats-row">
-        <div class="stat-card red" id="stat-customers">
-          <div class="stat-label">Total Visits</div>
-          <div class="stat-value">284</div>
-          <div class="stat-change">↑ 12% this week</div>
-        </div>
-        <div class="stat-card gold" id="stat-today">
-          <div class="stat-label">Active Customers</div>
-          <div class="stat-value">91</div>
-          <div class="stat-change">↑ 8 new this week</div>
-        </div>
-        <div class="stat-card green" id="stat-week">
-          <div class="stat-label">Rewards Redeemed</div>
-          <div class="stat-value">37</div>
-          <div class="stat-change">↑ 5 this week</div>
-        </div>
-        <div class="stat-card blue" id="stat-rewards">
-          <div class="stat-label">Stamps Today</div>
-          <div class="stat-value">14</div>
-          <div class="stat-change">↑ vs 9 yesterday</div>
-        </div>
-      </div>
-
-      <div class="grid-3-1">
-        <!-- VISITS CHART -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Visits This Week</div>
-            <div class="card-action">View All →</div>
+      <div class="page active" id="page-overview">
+        <div class="stats-row">
+          <div class="stat-card red" id="stat-customers">
+            <div class="stat-label">Total Customers</div>
+            <div class="stat-value">—</div>
+            <div class="stat-change">Loading stats…</div>
           </div>
-          <div class="bar-chart">
-            <div class="bar-col">
-              <div class="bar" style="height:40%" title="Mon: 18"></div>
-              <div class="bar-label">Mon</div>
+          <div class="stat-card green" id="stat-today">
+            <div class="stat-label">Visited Today</div>
+            <div class="stat-value">—</div>
+            <div class="stat-change">Loading…</div>
+          </div>
+          <div class="stat-card gold" id="stat-week">
+            <div class="stat-label">This Week</div>
+            <div class="stat-value">—</div>
+            <div class="stat-change">Loading…</div>
+          </div>
+          <div class="stat-card blue" id="stat-rewards">
+            <div class="stat-label">Rewards Issued</div>
+            <div class="stat-value">0</div>
+            <div class="stat-change">All time</div>
+          </div>
+        </div>
+
+        <div class="grid-3-1">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Visits This Week</div>
+              <div class="card-action">View All →</div>
             </div>
-            <div class="bar-col">
-              <div class="bar" style="height:65%" title="Tue: 29"></div>
-              <div class="bar-label">Tue</div>
+            <div class="bar-chart">
+              <div class="bar-col"><div class="bar" style="height:40%" title="Mon"></div><div class="bar-label">Mon</div></div>
+              <div class="bar-col"><div class="bar" style="height:65%" title="Tue"></div><div class="bar-label">Tue</div></div>
+              <div class="bar-col"><div class="bar" style="height:50%" title="Wed"></div><div class="bar-label">Wed</div></div>
+              <div class="bar-col"><div class="bar active" style="height:90%" title="Thu"></div><div class="bar-label">Thu</div></div>
+              <div class="bar-col"><div class="bar" style="height:75%" title="Fri"></div><div class="bar-label">Fri</div></div>
+              <div class="bar-col"><div class="bar" style="height:55%" title="Sat"></div><div class="bar-label">Sat</div></div>
+              <div class="bar-col"><div class="bar" style="height:25%" title="Sun"></div><div class="bar-label">Sun</div></div>
             </div>
-            <div class="bar-col">
-              <div class="bar" style="height:50%" title="Wed: 22"></div>
-              <div class="bar-label">Wed</div>
-            </div>
-            <div class="bar-col">
-              <div class="bar active" style="height:90%" title="Thu: 41"></div>
-              <div class="bar-label">Thu</div>
-            </div>
-            <div class="bar-col">
-              <div class="bar" style="height:75%" title="Fri: 34"></div>
-              <div class="bar-label">Fri</div>
-            </div>
-            <div class="bar-col">
-              <div class="bar" style="height:55%" title="Sat: 25"></div>
-              <div class="bar-label">Sat</div>
-            </div>
-            <div class="bar-col">
-              <div class="bar" style="height:25%" title="Sun: 11"></div>
-              <div class="bar-label">Sun</div>
+          </div>
+
+          <div class="stamp-card-preview">
+            <div class="scp-biz" id="scp-biz-name">YOUR BUSINESS</div>
+            <div class="scp-reward" id="scp-reward-text">Loading rules…</div>
+            <div class="stamps-grid" id="scp-stamps-grid"></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+            <div class="scp-progress">
+              <span id="scp-count-text">0 stamps</span>
+              <span style="color:var(--fire)" id="scp-action-text">Join now!</span>
             </div>
           </div>
         </div>
 
-        <!-- STAMP PREVIEW -->
-        <div class="stamp-card-preview">
-          <div class="scp-biz">THE CORNER CAFÉ</div>
-          <div class="scp-reward">☕ Buy 10 coffees, get 1 free</div>
-          <div class="stamps-grid">
-            <div class="stamp filled">☕</div>
-            <div class="stamp filled">☕</div>
-            <div class="stamp filled">☕</div>
-            <div class="stamp filled">☕</div>
-            <div class="stamp filled">☕</div>
-            <div class="stamp filled">☕</div>
-            <div class="stamp">☕</div>
-            <div class="stamp">☕</div>
-            <div class="stamp">☕</div>
-            <div class="stamp">⭐</div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Recent Activity</div>
+              <div class="card-action" onclick="switchPage('notifications')">See More →</div>
+            </div>
+            <div class="activity-list" id="dashboard-activity-list">
+              <p style="font-size:0.88rem;color:var(--muted);padding:10px 0;">No client events logged today.</p>
+            </div>
           </div>
-          <div class="progress-bar">
-            <div class="progress-fill"></div>
-          </div>
-          <div class="scp-progress">
-            <span>6 of 10 stamps</span>
-            <span style="color:var(--fire)">4 more to go!</span>
-          </div>
-        </div>
-      </div>
 
-      <!-- RECENT ACTIVITY -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Recent Activity</div>
-          <div class="card-action" onclick="showPage('customers', document.querySelector('[onclick*=customers]'))">View All →</div>
-        </div>
-        <div class="activity-list" id="activity-list">
-          <div class="activity-item">
-            <div class="activity-avatar">👩</div>
-            <div class="activity-info">
-              <div class="activity-name">Sarah M.</div>
-              <div class="activity-detail">Collected stamp · 7 of 10</div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🏆 Top Customers</div>
             </div>
-            <span class="stamp-badge">+1 Stamp</span>
-            <div class="activity-time">2 min ago</div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-avatar">👨</div>
-            <div class="activity-info">
-              <div class="activity-name">James K.</div>
-              <div class="activity-detail">Redeemed free coffee reward 🎉</div>
-            </div>
-            <span class="reward-badge">Reward!</span>
-            <div class="activity-time">18 min ago</div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-avatar">🧑</div>
-            <div class="activity-info">
-              <div class="activity-name">Alex T.</div>
-              <div class="activity-detail">New customer · First stamp</div>
-            </div>
-            <span class="stamp-badge">New!</span>
-            <div class="activity-time">34 min ago</div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-avatar">👩</div>
-            <div class="activity-info">
-              <div class="activity-name">Maria L.</div>
-              <div class="activity-detail">Collected stamp · 3 of 10</div>
-            </div>
-            <span class="stamp-badge">+1 Stamp</span>
-            <div class="activity-time">1 hr ago</div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-avatar">👨</div>
-            <div class="activity-info">
-              <div class="activity-name">Tom R.</div>
-              <div class="activity-detail">Collected stamp · 10 of 10</div>
-            </div>
-            <span class="reward-badge">Reward!</span>
-            <div class="activity-time">2 hrs ago</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CUSTOMERS PAGE -->
-    <div class="page" id="page-customers" data-loaded="false">
-      <div class="stats-row">
-        <div class="stat-card red" id="stat-customers">
-          <div class="stat-label">Total Customers</div>
-          <div class="stat-value">91</div>
-          <div class="stat-change">↑ 8 this month</div>
-        </div>
-        <div class="stat-card green" id="stat-week">
-          <div class="stat-label">Regulars (5+ visits)</div>
-          <div class="stat-value">34</div>
-          <div class="stat-change">↑ 4 new regulars</div>
-        </div>
-        <div class="stat-card gold" id="stat-today">
-          <div class="stat-label">Avg Stamps / Customer</div>
-          <div class="stat-value">6.2</div>
-          <div class="stat-change">↑ Up from 5.8</div>
-        </div>
-        <div class="stat-card blue" id="stat-rewards">
-          <div class="stat-label">Rewards Given</div>
-          <div class="stat-value">37</div>
-          <div class="stat-change">↑ 5 this week</div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">🏆 Top Customers</div>
-          </div>
-          <div class="customer-row">
-            <div class="customer-rank top">1</div>
-            <div class="customer-avatar">👩</div>
-            <div class="customer-name">Sarah Mitchell</div>
-            <div class="customer-visits">24 visits</div>
-            <div class="customer-stamps">
-              <div class="mini-stamp"></div><div class="mini-stamp"></div><div class="mini-stamp"></div><div class="mini-stamp"></div><div class="mini-stamp"></div>
-            </div>
-          </div>
-          <div class="customer-row">
-            <div class="customer-rank top">2</div>
-            <div class="customer-avatar">👨</div>
-            <div class="customer-name">Tom Robertson</div>
-            <div class="customer-visits">19 visits</div>
-            <div class="customer-stamps">
-              <div class="mini-stamp"></div><div class="mini-stamp"></div><div class="mini-stamp"></div><div class="mini-stamp"></div>
-            </div>
-          </div>
-          <div class="customer-row">
-            <div class="customer-rank top">3</div>
-            <div class="customer-avatar">🧑</div>
-            <div class="customer-name">Jamie Chen</div>
-            <div class="customer-visits">17 visits</div>
-            <div class="customer-stamps">
-              <div class="mini-stamp"></div><div class="mini-stamp"></div><div class="mini-stamp"></div>
-            </div>
-          </div>
-          <div class="customer-row">
-            <div class="customer-rank">4</div>
-            <div class="customer-avatar">👩</div>
-            <div class="customer-name">Maria Lopez</div>
-            <div class="customer-visits">14 visits</div>
-            <div class="customer-stamps">
-              <div class="mini-stamp"></div><div class="mini-stamp"></div>
-            </div>
-          </div>
-          <div class="customer-row">
-            <div class="customer-rank">5</div>
-            <div class="customer-avatar">👨</div>
-            <div class="customer-name">Alex Thompson</div>
-            <div class="customer-visits">12 visits</div>
-            <div class="customer-stamps">
-              <div class="mini-stamp"></div><div class="mini-stamp"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">🕐 Recent Visits</div>
-          </div>
-          <div class="activity-list">
-            <div class="activity-item">
-              <div class="activity-avatar">👩</div>
-              <div class="activity-info">
-                <div class="activity-name">Sarah M.</div>
-                <div class="activity-detail">Stamp 7/10</div>
+            <div id="top-customers-list">
+              <div class="customer-row">
+                <div class="customer-rank top">1</div>
+                <div class="customer-avatar">👩</div>
+                <div class="customer-name">Sarah Mitchell</div>
+                <div class="customer-visits">24 visits</div>
               </div>
-              <div class="activity-time">Today 2:14pm</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">👨</div>
-              <div class="activity-info">
-                <div class="activity-name">James K.</div>
-                <div class="activity-detail">Reward redeemed</div>
+              <div class="customer-row">
+                <div class="customer-rank top">2</div>
+                <div class="customer-avatar">👨</div>
+                <div class="customer-name">Tom Robertson</div>
+                <div class="customer-visits">19 visits</div>
               </div>
-              <div class="activity-time">Today 1:56pm</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">🧑</div>
-              <div class="activity-info">
-                <div class="activity-name">Alex T.</div>
-                <div class="activity-detail">First visit!</div>
+              <div class="customer-row">
+                <div class="customer-rank top">3</div>
+                <div class="customer-avatar">🧑</div>
+                <div class="customer-name">Jamie Chen</div>
+                <div class="customer-visits">17 visits</div>
               </div>
-              <div class="activity-time">Today 1:40pm</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">👩</div>
-              <div class="activity-info">
-                <div class="activity-name">Maria L.</div>
-                <div class="activity-detail">Stamp 3/10</div>
-              </div>
-              <div class="activity-time">Today 12:22pm</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- STAMP CARD PAGE -->
-    <div class="page" id="page-stampcard">
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">⚙️ Stamp Card Settings</div>
-          </div>
-          <div class="notif-form">
+      <div class="page" id="page-stampcard">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Config Reward Criteria</div></div>
             <div class="form-group">
-              <div class="form-label">Business Name (on card)</div>
-              <input class="form-input" type="text" id="sc-biz-name" value="Loading…" placeholder="Your business name">
+              <label class="form-label">Reward Description</label>
+              <input class="form-input" type="text" id="sc-reward" placeholder="e.g. Free Regular Coffee">
             </div>
             <div class="form-group">
-              <div class="form-label">Stamps Required for Reward</div>
+              <label class="form-label">Total Stamps Required</label>
               <select class="form-select">
-                <option>5 stamps</option>
-                <option>7 stamps</option>
-                <option selected>10 stamps</option>
-                <option>12 stamps</option>
-                <option>15 stamps</option>
+                <option value="5">5 Stamps</option>
+                <option value="8">8 Stamps</option>
+                <option value="10" selected>10 Stamps</option>
+                <option value="12">12 Stamps</option>
               </select>
             </div>
             <div class="form-group">
-              <div class="form-label">Reward Description</div>
-              <input class="form-input" type="text" id="sc-reward" value="Loading…" placeholder="e.g. Get 1 free coffee">
-            </div>
-            <div class="form-group">
-              <div class="form-label">Stamp Icon</div>
+              <label class="form-label">Stamp Icon Theme</label>
               <select class="form-select">
                 <option>☕ Coffee</option>
                 <option>🍕 Pizza</option>
@@ -1298,250 +881,138 @@
                 <option>🎯 Target</option>
               </select>
             </div>
-            <button class="send-btn" onclick="saveStampCard()">
-              💾 Save Changes
-            </button>
+            <button class="send-btn" onclick="saveStampCard()">💾 Save Card Policy</button>
+          </div>
+
+          <div>
+            <div class="card" style="margin-bottom:20px">
+              <div class="card-header"><div class="card-title">👀 Dynamic View</div></div>
+              <div class="stamp-card-preview">
+                <div class="scp-biz" id="design-biz-name">YOUR BUSINESS</div>
+                <div class="scp-reward" id="design-reward-text">Buy 10, get 1 free</div>
+                <div class="stamps-grid" id="design-stamps-grid"></div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 60%"></div></div>
+                <div class="scp-progress">
+                  <span>6 of 10 stamps completed</span>
+                  <span style="color:var(--fire)">4 more left!</span>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div class="card-title">🖨️ Counter Setup</div></div>
+              <p style="font-size:0.85rem;color:var(--muted);font-weight:600;margin-bottom:16px;line-height:1.6">
+                Display this code at checkouts. Users scan via mobile to claim structural stamps.
+              </p>
+              <button class="send-btn" onclick="openModal()">🖨️ View Live QR Artifact</button>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div>
-          <div class="card" style="margin-bottom:20px">
-            <div class="card-header">
-              <div class="card-title">👀 Preview</div>
-            </div>
-            <div class="stamp-card-preview">
-              <div class="scp-biz">THE CORNER CAFÉ</div>
-              <div class="scp-reward">☕ Buy 10 coffees, get 1 free</div>
-              <div class="stamps-grid">
-                <div class="stamp filled">☕</div>
-                <div class="stamp filled">☕</div>
-                <div class="stamp filled">☕</div>
-                <div class="stamp filled">☕</div>
-                <div class="stamp filled">☕</div>
-                <div class="stamp filled">☕</div>
-                <div class="stamp">☕</div>
-                <div class="stamp">☕</div>
-                <div class="stamp">☕</div>
-                <div class="stamp">⭐</div>
-              </div>
-              <div class="progress-bar"><div class="progress-fill"></div></div>
-              <div class="scp-progress">
-                <span>6 of 10 stamps</span>
-                <span style="color:var(--fire)">4 more to go!</span>
-              </div>
-            </div>
+      <div class="page" id="page-notifications">
+        <div class="card">
+          <div class="card-header"><div class="card-title">System Logs & Activities</div></div>
+          <div class="activity-list" id="full-activity-list">
+            <p style="color:var(--muted)">No operational entries recorded yet.</p>
           </div>
+        </div>
+      </div>
 
+      <div class="page" id="page-settings">
+        <div class="settings-grid">
           <div class="card">
-            <div class="card-header">
-              <div class="card-title">🖨️ Your QR Code</div>
-            </div>
-            <p style="font-size:0.85rem;color:var(--muted);font-weight:600;margin-bottom:16px;line-height:1.6">Print this and place it on your counter. Customers scan it to collect stamps.</p>
-            <button class="send-btn" onclick="openModal()">
-              🖨️ View & Print QR Code
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- NOTIFICATIONS PAGE -->
-    <div class="page" id="page-notifications">
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">📣 Send a Notification</div>
-          </div>
-          <div class="notif-form">
-            <div class="form-group">
-              <div class="form-label">Send To</div>
-              <select class="form-select">
-                <option>All Customers (91)</option>
-                <option>Regulars only (34)</option>
-                <option>New customers this week (8)</option>
-                <option>Almost at reward — 8+ stamps (22)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <div class="form-label">Notification Title</div>
-              <input class="form-input" type="text" placeholder="e.g. ☕ Double stamps today!">
-            </div>
-            <div class="form-group">
-              <div class="form-label">Message</div>
-              <textarea class="form-textarea" placeholder="e.g. Hey! Pop in today before 3pm and get double stamps on any coffee. See you soon!"></textarea>
-            </div>
-            <button class="send-btn" onclick="alert('Notification sent to 91 customers!')">
-              🚀 Send Notification
-            </button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">📬 Recent Notifications</div>
-          </div>
-          <div class="activity-list">
-            <div class="activity-item">
-              <div class="activity-avatar">📣</div>
-              <div class="activity-info">
-                <div class="activity-name">Double stamps Friday!</div>
-                <div class="activity-detail">Sent to 91 customers · 68% opened</div>
+            <div class="settings-section">
+              <h3>🏢 Corporate Identity</h3>
+              <div class="form-group">
+                <label class="form-label">Trading Name</label>
+                <input class="form-input" type="text" id="settings-name" value="Loading…">
               </div>
-              <div class="activity-time">3 days ago</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">🎉</div>
-              <div class="activity-info">
-                <div class="activity-name">We're on Stampd!</div>
-                <div class="activity-detail">Sent to 44 customers · 81% opened</div>
+              <div class="form-group">
+                <label class="form-label">Industry Classification</label>
+                <select class="form-select">
+                  <option selected>Café / Coffee Shop</option>
+                  <option>Restaurant</option>
+                  <option>Retail Store</option>
+                  <option>Bar / Pub</option>
+                </select>
               </div>
-              <div class="activity-time">2 weeks ago</div>
+              <div class="form-group">
+                <label class="form-label">Physical Address</label>
+                <input class="form-input" type="text" id="settings-address" value="Loading…">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Contact Line</label>
+                <input class="form-input" type="text" id="settings-phone" value="Loading…">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Validation Staff PIN</label>
+                <input class="form-input" type="number" id="settings-pin" placeholder="4-digit PIN" min="1000" max="9999">
+              </div>
+              <button class="send-btn" onclick="saveBusinessDetails()">💾 Save Details</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <div class="settings-section">
+                <h3>🔔 Alert Configurations</h3>
+                <div class="toggle-row">
+                  <div class="toggle-info">
+                    <div class="toggle-name">Registration Alerts</div>
+                    <div class="toggle-desc">Ping on new regular creation</div>
+                  </div>
+                  <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+                </div>
+                <div class="toggle-row">
+                  <div class="toggle-info">
+                    <div class="toggle-name">Redemption Audits</div>
+                    <div class="toggle-desc">Ping when claims are filled</div>
+                  </div>
+                  <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+                </div>
+                <div class="toggle-row">
+                  <div class="toggle-info">
+                    <div class="toggle-name">Weekly Digests</div>
+                    <div class="toggle-desc">Monday status reporting deliveries</div>
+                  </div>
+                  <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- SETTINGS PAGE -->
-    <div class="page" id="page-settings">
-      <div class="settings-grid">
-        <div class="settings-section">
-          <h3>🏪 Business Details</h3>
-          <div class="notif-form">
-            <div class="form-group">
-              <div class="form-label">Business Name</div>
-              <input class="form-input" type="text" id="settings-biz-name" value="Loading…">
-            </div>
-            <div class="form-group">
-              <div class="form-label">Business Type</div>
-              <select class="form-select">
-                <option selected>Café / Coffee Shop</option>
-                <option>Restaurant</option>
-                <option>Retail Store</option>
-                <option>Bar / Pub</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <div class="form-label">Address</div>
-              <input class="form-input" type="text" id="settings-address" value="Loading…">
-            </div>
-            <div class="form-group">
-              <div class="form-label">Phone</div>
-              <input class="form-input" type="text" id="settings-phone" value="Loading…">
-            </div>
-            <div class="form-group">
-              <div class="form-label">Staff PIN</div>
-              <input class="form-input" type="number" id="settings-pin" placeholder="4-digit PIN" min="1000" max="9999">
-            </div>
-            <button class="send-btn" onclick="saveBusinessDetails()">💾 Save Details</button>
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <h3>🔔 Notification Preferences</h3>
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <div class="toggle-name">New customer alerts</div>
-              <div class="toggle-desc">Notify me when a new customer joins</div>
-            </div>
-            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-          </div>
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <div class="toggle-name">Reward redeemed alerts</div>
-              <div class="toggle-desc">Notify when a reward is claimed</div>
-            </div>
-            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-          </div>
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <div class="toggle-name">Weekly summary email</div>
-              <div class="toggle-desc">Get your weekly stats every Monday</div>
-            </div>
-            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-          </div>
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <div class="toggle-name">Daily visit summary</div>
-              <div class="toggle-desc">End of day visit count</div>
-            </div>
-            <div class="toggle" onclick="this.classList.toggle('on')"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    </main>
   </div>
-</div>
 
-<!-- QR MODAL -->
-<div class="modal-overlay" id="qr-modal" onclick="closeModalOutside(event)">
-  <div class="modal" style="position:relative">
-    <div class="modal-close" onclick="closeModal()">✕</div>
-    <h2>Your QR Code</h2>
-    <p>Place this on your counter. Customers scan it with the Stampd app to collect stamps.</p>
-   <div class="qr-placeholder" style="padding:12px">
-      <div id="qr-target" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"></div>
-    </div>
-    <div style="font-size:0.8rem;color:var(--muted);font-weight:600;margin-bottom:20px" id="qr-modal-biz">Loading… · stampd.co.nz</div>
-    <div class="modal-btns">
-      <button class="modal-btn primary" onclick="window.location.href='qr-code.html'">🖨️ View & Print QR Code</button>
-      <button class="modal-btn secondary" onclick="closeModal()">Close</button>
+  <div class="modal-overlay" id="qr-modal" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h2>YOUR COUNTER CODE</h2>
+      <p id="qr-modal-biz">Loading Vendor Context...</p>
+      
+      <div class="qr-placeholder" style="padding:12px">
+        <div id="qr-target" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"></div>
+      </div>
+
+      <button class="close-modal-btn" onclick="closeModal()">Dismiss View</button>
     </div>
   </div>
-</div>
 
-<script>
-  const pages = {
-    overview: { title: 'Overview', sub: "Welcome back! Here's what's happening today." },
-    customers: { title: 'Customers', sub: 'See who is visiting and coming back.' },
-    stampcard: { title: 'Stamp Card', sub: 'Manage your stamp card and QR code.' },
-    notifications: { title: 'Notifications', sub: 'Send messages to your customers.' },
-    settings: { title: 'Settings', sub: 'Manage your business details.' }
-  };
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
-  function showPage(id, el) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('page-' + id).classList.add('active');
-    if (el) el.classList.add('active');
-    document.getElementById('page-title').textContent = pages[id].title;
-    document.getElementById('page-sub').textContent = pages[id].sub;
-    if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
-  }
-
-  function openModal() {
-    document.getElementById('qr-modal').classList.add('open');
-  }
-
-  function closeModal() {
-    document.getElementById('qr-modal').classList.remove('open');
-  }
-
-  function closeModalOutside(e) {
-    if (e.target === document.getElementById('qr-modal')) closeModal();
-  }
-
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('open');
-  }
-</script>
-
-<script type="module">
+  <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import {
-    getFirestore, doc, getDoc, getDocs, updateDoc,
-    collection, query, where, orderBy, limit, serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, getDocs, updateDoc, collection, query, where, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM",
-    authDomain: "stampd-e4353.firebaseapp.com",
-    projectId: "stampd-e4353",
-    storageBucket: "stampd-e4353.firebasestorage.app",
-    messagingSenderId: "272536856213",
-    appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
+  const firebaseConfig = { 
+    apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM", 
+    authDomain: "stampd-e4353.firebaseapp.com", 
+    projectId: "stampd-e4353", 
+    storageBucket: "stampd-e4353.firebasestorage.app", 
+    messagingSenderId: "272536856213", 
+    appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c" 
   };
 
   const app = initializeApp(firebaseConfig);
@@ -1550,78 +1021,65 @@
 
   let vendorUid = null;
   let vendorData = null;
+
   const today = new Date().toISOString().split('T')[0];
+  document.getElementById('topbar-date').textContent = 'Today · ' + new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'short' });
 
   function bizEmoji(type) {
-    const map = {
-      'Café / Coffee Shop':'☕','Restaurant':'🍽️','Bar / Pub':'🍺',
-      'Retail Store':'🛍️','Hair & Beauty Salon':'💇','Gym / Fitness Studio':'💪',
-      'Bakery':'🥐','Food Truck':'🚚','Other':'🏪'
-    };
+    const map = { 'Café / Coffee Shop':'☕','Restaurant':'🍽️','Bar / Pub':'🍺', 'Retail Store':'🛍️','Hair & Beauty Salon':'💇','Gym / Fitness Studio':'💪', 'Bakery':'🥐','Food Truck':'🚚','Other':'🏪' };
     return map[type] || '🏪';
   }
 
-  function timeAgo(ts) {
-    if (!ts) return '';
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    const diff = Math.floor((Date.now() - d) / 1000);
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-    return Math.floor(diff/86400) + 'd ago';
-  }
-
-  // Populate vendor info across dashboard
-  function populateVendorInfo(data) {
-    const emoji = bizEmoji(data.businessType);
+  // Base setup info
+  window.populateVendorInfo = function(data) {
     const name = data.businessName || 'Your Business';
-    const type = data.businessType || '';
+    const type = data.businessType || 'Other';
+    const emoji = bizEmoji(type);
 
-    document.getElementById('sidebar-biz-avatar').textContent = emoji;
     document.getElementById('sidebar-biz-name').textContent = name;
     document.getElementById('sidebar-biz-type').textContent = type;
-    document.getElementById('qr-modal-biz').textContent = name + ' · stampd.co.nz';
+    document.getElementById('sidebar-biz-avatar').textContent = emoji;
+    document.getElementById('scp-biz-name').textContent = name.toUpperCase();
+    document.getElementById('design-biz-name').textContent = name.toUpperCase();
 
-    // Stamp card settings
-    const scName = document.getElementById('sc-biz-name');
-    if (scName) scName.value = name;
-    const scReward = document.getElementById('sc-reward');
-    if (scReward) scReward.value = data.reward || '';
-    const scGoal = document.querySelector('#page-stampcard .form-select');
-    if (scGoal && data.stampGoal) {
-      for (let opt of scGoal.options) {
-        if (opt.value === String(data.stampGoal)) { opt.selected = true; break; }
-      }
+    const reward = data.reward || 'Buy 10, get 1 free';
+    document.getElementById('scp-reward-text').textContent = reward;
+    document.getElementById('design-reward-text').textContent = reward;
+
+    const rewardInput = document.getElementById('sc-reward');
+    if (rewardInput) rewardInput.value = data.reward || '';
+
+    document.getElementById('qr-modal-biz').textContent = name + ' · stampd.co.nz';
+    
+    // Generate real QR code (encodes vendor UID, matching the mobile app)
+    const qrTarget = document.getElementById('qr-target');
+    if (qrTarget && window.QRCode && vendorUid) {
+      qrTarget.innerHTML = '';
+      QRCode.toCanvas(qrTarget, vendorUid, { width: 180, margin: 1 }, function(err, canvas) {
+        if (!err && canvas) qrTarget.appendChild(canvas);
+      });
     }
 
-    // Settings page
-    const sName = document.getElementById('settings-biz-name');
-    if (sName) sName.value = name;
-    const sAddr = document.getElementById('settings-address');
-    if (sAddr) sAddr.value = data.address || '';
-    const sPhone = document.getElementById('settings-phone');
-    if (sPhone) sPhone.value = data.phone || '';
-    const sPin = document.getElementById('settings-pin');
-    if (sPin) sPin.value = data.pin || '';
+    // Load Settings
+    const nameInput = document.getElementById('settings-name');
+    if (nameInput) nameInput.value = name;
+    const addrInput = document.getElementById('settings-address');
+    if (addrInput) addrInput.value = data.address || '';
+    const phoneInput = document.getElementById('settings-phone');
+    if (phoneInput) phoneInput.value = data.phone || '';
+    const pinInput = document.getElementById('settings-pin');
+    if (pinInput) pinInput.value = data.staffPin || '';
+  };
 
-    // Stamp card preview
-    const scpBiz = document.querySelector('.scp-biz');
-    if (scpBiz) scpBiz.textContent = name.toUpperCase();
-    const scpReward = document.querySelector('.scp-reward');
-    if (scpReward) scpReward.textContent = '🔥 ' + (data.reward || 'Complete your card for a reward!');
-  }
-
-  // Load stats from stampCards
-  async function loadStats() {
+  // Live Stats counting
+  window.loadStats = async function() {
+    if (!vendorUid) return;
     try {
-      const q = query(collection(db, 'stampCards'), where('vendorId', '==', vendorUid));
-      const snap = await getDocs(q);
-
+      const snap = await getDocs(query(collection(db, 'users'), where('vendorUid', '==', vendorUid)));
       let totalCustomers = 0;
       let stampedToday = 0;
       let stampsThisWeek = 0;
 
-      // Week start
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const weekAgoStr = weekAgo.toISOString().split('T')[0];
@@ -1633,11 +1091,10 @@
         if (data.lastStampDate >= weekAgoStr) stampsThisWeek++;
       });
 
-      // Update stat cards
       const statCards = {
-        'stat-customers': { val: totalCustomers, change: 'Total customers' },
+        'stat-customers': { val: totalCustomers, change: 'Total customers tracked' },
         'stat-today': { val: stampedToday, change: 'Visited today' },
-        'stat-week': { val: stampsThisWeek, change: 'This week' },
+        'stat-week': { val: stampsThisWeek, change: 'Active this week' },
       };
 
       Object.entries(statCards).forEach(([id, info]) => {
@@ -1649,76 +1106,10 @@
           if (changeEl) changeEl.textContent = info.change;
         }
       });
-
-      // Load recent activity
-      loadRecentActivity(snap.docs);
-
-    } catch(e) {
-      console.error('Stats error:', e);
-    }
-  }
-
-  // Load recent activity feed
-  function loadRecentActivity(docs) {
-    const list = document.getElementById('activity-list');
-    if (!list) return;
-
-    // Sort by updatedAt desc
-    const sorted = docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(d => d.updatedAt)
-      .sort((a, b) => {
-        const ta = a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(0);
-        const tb = b.updatedAt?.toDate ? b.updatedAt.toDate() : new Date(0);
-        return tb - ta;
-      })
-      .slice(0, 8);
-
-    if (sorted.length === 0) {
-      list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:0.85rem;font-weight:600;padding:20px">No stamps yet — share your QR code to get started!</div>';
-      return;
-    }
-
-    list.innerHTML = sorted.map(d => {
-      const initial = (d.customerEmail || d.customerUid || '?')[0].toUpperCase();
-      const stamps = d.stamps || 0;
-      const goal = vendorData?.stampGoal || 10;
-      const isReward = stamps === 0 && d.totalLifetimeStamps > 0;
-      const badge = isReward
-        ? '<span class="reward-badge">🎁 Reward claimed</span>'
-        : `<span class="stamp-badge">🔥 Stamp ${stamps}/${goal}</span>`;
-      return `<div class="activity-item">
-        <div class="activity-avatar">${initial}</div>
-        <div class="activity-info">
-          <div class="activity-name">${d.customerEmail || 'Customer'}</div>
-          <div class="activity-detail">Stamp collected · ${goal - stamps} more for reward</div>
-        </div>
-        ${badge}
-        <div class="activity-time">${timeAgo(d.updatedAt)}</div>
-      </div>`;
-    }).join('');
-  }
-
-  // Save business details
-  window.saveBusinessDetails = async function() {
-    if (!vendorUid) return;
-    const name = document.getElementById('settings-biz-name')?.value.trim();
-    const address = document.getElementById('settings-address')?.value.trim();
-    const phone = document.getElementById('settings-phone')?.value.trim();
-    const pin = document.getElementById('settings-pin')?.value.trim();
-    try {
-      await updateDoc(doc(db, 'vendors', vendorUid), {
-        businessName: name, address, phone,
-        pin: pin || vendorData?.pin || null,
-        updatedAt: serverTimestamp()
-      });
-      alert('✅ Details saved!');
-      vendorData = { ...vendorData, businessName: name, address, phone, pin };
-      populateVendorInfo(vendorData);
-    } catch(e) { alert('Error saving. Please try again.'); }
+    } catch(e) { console.error('Error parsing operational statistics:', e); }
   };
 
-  // Save stamp card settings
+  // Save changes
   window.saveStampCard = async function() {
     if (!vendorUid) return;
     const reward = document.getElementById('sc-reward')?.value.trim();
@@ -1728,8 +1119,22 @@
       await updateDoc(doc(db, 'vendors', vendorUid), {
         reward, stampGoal, updatedAt: serverTimestamp()
       });
-      alert('✅ Stamp card updated!');
+      alert(' ✅ Stamp card updated!');
     } catch(e) { alert('Error saving. Please try again.'); }
+  };
+
+  window.saveBusinessDetails = async function() {
+    if (!vendorUid) return;
+    const name = document.getElementById('settings-name')?.value.trim();
+    const address = document.getElementById('settings-address')?.value.trim();
+    const phone = document.getElementById('settings-phone')?.value.trim();
+    const staffPin = document.getElementById('settings-pin')?.value.trim();
+    try {
+      await updateDoc(doc(db, 'vendors', vendorUid), {
+        businessName: name, address, phone, staffPin, updatedAt: serverTimestamp()
+      });
+      alert(' ✅ Business details securely committed!');
+    } catch(e) { alert('Error processing updates.'); }
   };
 
   // Logout
@@ -1740,35 +1145,56 @@
 
   // Auth check & init
   onAuthStateChanged(auth, async (user) => {
-    // Try sessionStorage fallback for when Auth has issues
     const sessionUid = sessionStorage.getItem('vendorUid');
     const sessionName = sessionStorage.getItem('vendorName');
-
     if (!user && !sessionUid) {
       window.location.href = 'vendor-login.html';
       return;
     }
-
     vendorUid = user?.uid || sessionUid;
-
     try {
       const snap = await getDoc(doc(db, 'vendors', vendorUid));
       if (snap.exists()) {
         vendorData = snap.data();
       } else {
-        // Fallback to session data
         vendorData = { businessName: sessionName || 'Your Business', businessType: 'Other' };
       }
       populateVendorInfo(vendorData);
       loadStats();
     } catch(e) {
       console.error('Dashboard load error:', e);
-      // Still show dashboard with session data
       vendorData = { businessName: sessionName || 'Your Business', businessType: 'Other' };
       populateVendorInfo(vendorData);
     }
   });
-</script>
+  </script>
 
+  <script>
+    function switchPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      
+      const targetPage = document.getElementById('page-' + pageId);
+      if (targetPage) targetPage.classList.add('active');
+      
+      document.getElementById('topbar-title').textContent = pageId.charAt(0).toUpperCase() + pageId.slice(1);
+      
+      const evt = event || window.event;
+      if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+      toggleSidebar(false);
+    }
+
+    function toggleSidebar(forcedState) {
+      const sb = document.getElementById('sidebar');
+      if (typeof forcedState === 'boolean') {
+        forcedState ? sb.classList.add('open') : sb.classList.remove('open');
+      } else {
+        sb.classList.toggle('open');
+      }
+    }
+
+    function openModal() { document.getElementById('qr-modal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('qr-modal').style.display = 'none'; }
+  </script>
 </body>
 </html>
