@@ -1480,11 +1480,8 @@
     <div class="modal-close" onclick="closeModal()">✕</div>
     <h2>Your QR Code</h2>
     <p>Place this on your counter. Customers scan it with the Stampd app to collect stamps.</p>
-    <div class="qr-placeholder">
-      <div class="qr-inner"></div>
-      <div class="qr-corner tl"></div>
-      <div class="qr-corner tr"></div>
-      <div class="qr-corner bl"></div>
+   <div class="qr-placeholder" style="padding:12px">
+      <div id="qr-target" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"></div>
     </div>
     <div style="font-size:0.8rem;color:var(--muted);font-weight:600;margin-bottom:20px" id="qr-modal-biz">Loading… · stampd.co.nz</div>
     <div class="modal-btns">
