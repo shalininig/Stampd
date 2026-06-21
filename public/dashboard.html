@@ -1078,43 +1078,41 @@
   };
 
   // Live Stats counting
-  window.loadStats = async function() {
-    if (!vendorUid) return;
-    try {
-      const snap = await getDocs(query(collection(db, 'users'), where('vendorUid', '==', vendorUid)));
-      let totalCustomers = 0;
-      let stampedToday = 0;
-      let stampsThisWeek = 0;
-
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoStr = weekAgo.toISOString().split('T')[0];
-
-      snap.forEach(d => {
-        const data = d.data();
-        totalCustomers++;
-        if (data.lastStampDate === today) stampedToday++;
-        if (data.lastStampDate >= weekAgoStr) stampsThisWeek++;
-      });
-
-      const statCards = {
-        'stat-customers': { val: totalCustomers, change: 'Total customers tracked' },
-        'stat-today': { val: stampedToday, change: 'Visited today' },
-        'stat-week': { val: stampsThisWeek, change: 'Active this week' },
-      };
-
-      Object.entries(statCards).forEach(([id, info]) => {
-        const card = document.getElementById(id);
-        if (card) {
-          const valEl = card.querySelector('.stat-value');
-          const changeEl = card.querySelector('.stat-change');
-          if (valEl) valEl.textContent = info.val;
-          if (changeEl) changeEl.textContent = info.change;
-        }
-      });
-    } catch(e) { console.error('Error parsing operational statistics:', e); }
-  };
-
+window.loadStats = async function() {
+  if (!vendorUid) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'stampCards'), where('vendorId', '==', vendorUid)));
+    let totalCustomers = 0, visitedToday = 0, activeThisWeek = 0, rewardsIssued = 0;
+    const goal = (vendorData && vendorData.stampGoal) ? vendorData.stampGoal : 10;
+    const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    snap.forEach(d => {
+      const data = d.data();
+      totalCustomers++;
+      const last = data.lastStampAt?.toDate ? data.lastStampAt.toDate() : null;
+      if (last) {
+        if (last >= startOfToday) visitedToday++;
+        if (last >= weekAgo) activeThisWeek++;
+      }
+      rewardsIssued += Math.floor((data.totalLifetimeStamps || 0) / goal);
+    });
+    const statCards = {
+      'stat-customers': { val: totalCustomers, change: 'Total customers tracked' },
+      'stat-today': { val: visitedToday, change: 'Visited today' },
+      'stat-week': { val: activeThisWeek, change: 'Active this week' },
+      'stat-rewards': { val: rewardsIssued, change: 'All time' },
+    };
+    Object.entries(statCards).forEach(([id, info]) => {
+      const card = document.getElementById(id);
+      if (card) {
+        const valEl = card.querySelector('.stat-value');
+        const changeEl = card.querySelector('.stat-change');
+        if (valEl) valEl.textContent = info.val;
+        if (changeEl) changeEl.textContent = info.change;
+      }
+    });
+  } catch(e) { console.error('Error parsing operational statistics:', e); }
+};
   // Save changes
   window.saveStampCard = async function() {
     if (!vendorUid) return;
@@ -1202,6 +1200,9 @@
 function openModal() {
   document.getElementById('qr-modal').style.display = 'flex';
   if (window.renderCounterQR) window.renderCounterQR();
+}
+    function closeModal() {
+  document.getElementById('qr-modal').style.display = 'none';
 }
   </script>
 </body>
