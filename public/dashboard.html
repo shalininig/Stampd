@@ -992,8 +992,7 @@
       <p id="qr-modal-biz">Loading Vendor Context...</p>
       
       <div class="qr-placeholder" style="padding:12px">
-        <canvas id="qr-target" style="width:100% !important;height:100% !important;"></canvas>
-      </div>
+<canvas id="qr-target"></canvas>      </div>
 
       <button class="close-modal-btn" onclick="closeModal()">Dismiss View</button>
     </div>
@@ -1051,14 +1050,18 @@
 
     document.getElementById('qr-modal-biz').textContent = name + ' · stampd.co.nz';
     
-    // Fixed logic: target element passed correctly as first parameter
-    const qrCanvas = document.getElementById('qr-target');
-    if (qrCanvas && window.QRCode && vendorUid) {
-      QRCode.toCanvas(qrCanvas, vendorUid, { width: 180, margin: 1 }, function(err) {
-        if (err) console.error('QR Render Failed:', err);
+// expose to the classic script (module scope is not global)
+    window.vendorUid = vendorUid;
+    window.renderCounterQR = function () {
+      const c = document.getElementById('qr-target');
+      if (!c) return;
+      if (!window.QRCode)   { console.error('QR library not loaded — qrcode.min.js did not load'); return; }
+      if (!window.vendorUid){ console.error('No vendorUid to encode'); return; }
+      QRCode.toCanvas(c, window.vendorUid, { width: 180, margin: 1 }, function (err) {
+        if (err) console.error('QR render failed:', err);
       });
-    }
-
+    };
+    window.renderCounterQR();
     // Load Settings
     const nameInput = document.getElementById('settings-name');
     if (nameInput) nameInput.value = name;
@@ -1192,8 +1195,10 @@
       }
     }
 
-    function openModal() { document.getElementById('qr-modal').style.display = 'flex'; }
-    function closeModal() { document.getElementById('qr-modal').style.display = 'none'; }
+function openModal() {
+  document.getElementById('qr-modal').style.display = 'flex';
+  if (window.renderCounterQR) window.renderCounterQR();
+}
   </script>
 </body>
 </html>
