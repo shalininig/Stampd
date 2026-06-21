@@ -998,7 +998,11 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script type="module">
+  import QRCode from "https://esm.sh/qrcode@1.5.4";
+  window.QRCode = QRCode;
+  if (window.renderCounterQR) window.renderCounterQR();
+</script>
 
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
