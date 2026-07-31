@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stampd — One-off Data Migration</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fire:#FF3008; --gold:#FFB830; --bg:#0F0F0F; --surface:#1A1A1A; --surface2:#222;
+    --border:rgba(255,255,255,.08); --text:#F0F0F0; --muted:rgba(255,255,255,.45);
+    --green:#22C55E; --red:#EF4444;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);padding:32px;line-height:1.6}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-family:'Bebas Neue',cursive;font-size:2.2rem;letter-spacing:2px}
+  .sub{color:var(--muted);font-size:.9rem;margin-bottom:26px}
+  .warn{background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.3);color:var(--gold);
+        padding:14px 16px;border-radius:12px;font-size:.87rem;margin-bottom:22px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px}
+  .panel h2{font-size:1rem;margin-bottom:6px}
+  .panel p{color:var(--muted);font-size:.85rem;margin-bottom:14px}
+  .btn{padding:12px 20px;border-radius:10px;border:none;font-family:inherit;font-weight:700;
+       font-size:.9rem;cursor:pointer;background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn.go{background:var(--fire);color:#fff;border-color:var(--fire)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  pre{background:#0A0A0A;border:1px solid var(--border);border-radius:10px;padding:14px;
+      font-size:.8rem;white-space:pre-wrap;margin-top:14px;max-height:340px;overflow:auto;color:var(--muted)}
+  .ok{color:var(--green)} .bad{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DATA MIGRATION</h1>
+  <p class="sub">One-off cleanup. Sign in as the owner account first, then run each step in order.</p>
+
+  <div class="warn">
+    ⚠️ Run <strong>Preview</strong> first and read the output. Nothing is written until you click Apply.
+    Delete this file from <code>public/</code> once you're done.
+  </div>
+
+  <div class="panel">
+    <h2>Step 1 — Move orphaned signups into vendorApplications</h2>
+    <p>The old signup form wrote applications into <code>vendors</code> with an auto-generated ID.
+       Nothing ever read them. This copies them into <code>vendorApplications</code> and removes the originals.</p>
+    <button class="btn" data-run="1" data-dry="1">Preview</button>
+    <button class="btn go" data-run="1" data-dry="0">Apply</button>
+    <pre id="out1">Not run yet.</pre>
+  </div>
+
+  <div class="panel">
+    <h2>Step 2 — Copy staffPin → pin on live vendors</h2>
+    <p>The website saved the staff PIN as <code>staffPin</code>, but stamping reads <code>pin</code>.
+       This copies the value across so existing vendors' PINs start working again.</p>
+    <button class="btn" data-run="2" data-dry="1">Preview</button>
+    <button class="btn go" data-run="2" data-dry="0">Apply</button>
+    <pre id="out2">Not run yet.</pre>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, deleteField }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM",
+  authDomain: "stampd-e4353.firebaseapp.com",
+  projectId: "stampd-e4353",
+  storageBucket: "stampd-e4353.firebasestorage.app",
+  messagingSenderId: "272536856213",
+  appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let ready = false;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { log(1, 'bad', 'Not signed in. Log in as the owner at vendor-login.html first.'); return; }
+  const o = await getDoc(doc(db, 'owners', user.uid)).catch(() => null);
+  if (!o || !o.exists()) {
+    log(1, 'bad', `Signed in as ${user.email}, but that is not an owner account.\nCreate owners/${user.uid} in Firestore first.`);
+    return;
+  }
+  ready = true;
+  log(1, 'ok', `Signed in as owner (${user.email}). Ready.`);
+  log(2, 'ok', `Signed in as owner (${user.email}). Ready.`);
+});
+
+function log(step, cls, msg) {
+  const el = document.getElementById('out' + step);
+  el.className = cls || '';
+  el.textContent = msg;
+}
+
+// A doc in `vendors` is an orphaned application if it was never linked to
+// an Auth user — no claimedAt, no pin, no stampGoal.
+const isOrphan = d => !d.claimedAt && !d.pin && !d.stampGoal && !d.staffPin;
+
+document.querySelectorAll('[data-run]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    if (!ready) return;
+    const step = btn.dataset.run, dry = btn.dataset.dry === '1';
+    btn.disabled = true;
+    try {
+      if (step === '1') await step1(dry);
+      else await step2(dry);
+    } catch (e) {
+      console.error(e);
+      log(step, 'bad', 'Failed: ' + e.message);
+    }
+    btn.disabled = false;
+  });
+});
+
+async function step1(dry) {
+  const snap = await getDocs(collection(db, 'vendors'));
+  const orphans = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(isOrphan);
+  if (!orphans.length) return log(1, 'ok', 'Nothing to migrate — no orphaned signups found.');
+
+  const lines = orphans.map(o => `  ${o.id}  ${o.businessName || '(unnamed)'}  <${o.email || 'no email'}>`);
+  if (dry) return log(1, '', `Would move ${orphans.length} document(s) into vendorApplications:\n\n${lines.join('\n')}`);
+
+  let moved = 0, failed = [];
+  for (const o of orphans) {
+    const { id, ...data } = o;
+    try {
+      await addDoc(collection(db, 'vendorApplications'), {
+        businessName: data.businessName || '',
+        ownerName:    data.ownerName || '',
+        email:        data.email || '',
+        phone:        data.phone || '',
+        businessType: data.businessType || '',
+        address:      data.address || '',
+        city:         data.city || '',
+        status:       'pending',
+        registeredAt: data.registeredAt || null,
+        migratedFrom: id
+      });
+      await deleteDoc(doc(db, 'vendors', id));
+      moved++;
+    } catch (e) { failed.push(`${id}: ${e.message}`); }
+  }
+  log(1, failed.length ? 'bad' : 'ok',
+    `Moved ${moved} of ${orphans.length}.` + (failed.length ? `\n\nFailed:\n${failed.join('\n')}` : '\n\nDone. Check the Applications tab in owner.html.'));
+}
+
+async function step2(dry) {
+  const snap = await getDocs(collection(db, 'vendors'));
+  const targets = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                           .filter(v => v.staffPin && !v.pin);
+  if (!targets.length) return log(2, 'ok', 'Nothing to fix — no vendor has a staffPin without a pin.');
+
+  const lines = targets.map(v => `  ${v.businessName || v.id}  staffPin=${v.staffPin} → pin`);
+  if (dry) return log(2, '', `Would update ${targets.length} vendor(s):\n\n${lines.join('\n')}`);
+
+  let done = 0, failed = [];
+  for (const v of targets) {
+    try {
+      await updateDoc(doc(db, 'vendors', v.id), { pin: String(v.staffPin), staffPin: deleteField() });
+      done++;
+    } catch (e) { failed.push(`${v.id}: ${e.message}`); }
+  }
+  log(2, failed.length ? 'bad' : 'ok',
+    `Updated ${done} of ${targets.length}.` + (failed.length ? `\n\nFailed:\n${failed.join('\n')}` : ''));
+}
+</script>
+</body>
+</html>

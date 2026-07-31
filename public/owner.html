@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stampd — Owner Console</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fire: #FF3008;
+    --ember: #FF6B2B;
+    --gold: #FFB830;
+    --bg: #0F0F0F;
+    --surface: #1A1A1A;
+    --surface2: #222222;
+    --border: rgba(255,255,255,0.08);
+    --text: #F0F0F0;
+    --muted: rgba(255,255,255,0.45);
+    --green: #22C55E;
+    --blue: #3B82F6;
+    --red: #EF4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 50;
+  }
+  .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid var(--border); }
+  .logo-text {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.8rem;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--fire), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { font-size: 0.72rem; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; margin-top: 2px; }
+  .nav { padding: 12px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 10px;
+    color: var(--muted); font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; margin-bottom: 4px; border: none;
+    background: transparent; width: 100%; text-align: left;
+    font-family: inherit;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: linear-gradient(135deg, var(--fire), var(--ember)); color: #fff; }
+  .nav-badge {
+    margin-left: auto; background: var(--fire); color: #fff;
+    font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  }
+  .nav-item.active .nav-badge { background: rgba(0,0,0,0.3); }
+  .sidebar-foot { padding: 16px; border-top: 1px solid var(--border); }
+  .btn-logout {
+    width: 100%; padding: 10px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .btn-logout:hover { color: var(--text); }
+
+  /* MAIN */
+  .main { margin-left: 240px; flex: 1; padding: 32px; max-width: 1400px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-family: 'Bebas Neue', cursive; font-size: 2.2rem; letter-spacing: 2px; }
+  .page-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+
+  /* STATS */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .stat-label { font-size: 0.78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-family: 'Bebas Neue', cursive; font-size: 2.4rem; letter-spacing: 1px; margin: 6px 0 2px; }
+  .stat-change { font-size: 0.78rem; color: var(--muted); }
+
+  /* TABLE */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+  }
+  .panel-head {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title { font-weight: 700; font-size: 1rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 12px 20px; font-size: 0.74rem;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border); font-weight: 700;
+  }
+  td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .biz-name { font-weight: 700; }
+  .biz-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+  .pill {
+    display: inline-block; padding: 4px 10px; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .pill.pending  { background: rgba(255,184,48,0.15); color: var(--gold); }
+  .pill.approved { background: rgba(34,197,94,0.15); color: var(--green); }
+  .pill.rejected { background: rgba(239,68,68,0.15); color: var(--red); }
+  .pill.live     { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .pill.claimed  { background: rgba(34,197,94,0.15); color: var(--green); }
+  .pill.unclaimed{ background: rgba(255,255,255,0.07); color: var(--muted); }
+
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: none;
+    font-weight: 700; font-size: 0.8rem; cursor: pointer;
+    font-family: inherit; margin-right: 6px;
+  }
+  .btn-approve { background: var(--green); color: #08240f; }
+  .btn-reject  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .btn-reject:hover { color: var(--red); border-color: var(--red); }
+  .btn-copy { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .empty { padding: 44px 20px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+
+  /* GATE */
+  .gate {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px; z-index: 100; text-align: center; padding: 24px;
+  }
+  .gate h2 { font-family: 'Bebas Neue', cursive; font-size: 2rem; letter-spacing: 2px; }
+  .gate p { color: var(--muted); font-size: 0.9rem; max-width: 380px; }
+  .gate a { color: var(--fire); font-weight: 700; }
+  .spinner {
+    width: 34px; height: 34px; border: 3px solid var(--border);
+    border-top-color: var(--fire); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 14px 20px; border-radius: 12px; font-weight: 600; font-size: 0.88rem;
+    opacity: 0; transform: translateY(10px); transition: all 0.25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.ok  { border-color: var(--green); }
+  .toast.err { border-color: var(--red); }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); }
+    .main { margin-left: 0; padding: 20px; }
+    table { display: block; overflow-x: auto; white-space: nowrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ACCESS GATE -->
+<div class="gate" id="gate">
+  <div class="spinner" id="gate-spinner"></div>
+  <h2 id="gate-title">Checking access…</h2>
+  <p id="gate-msg"></p>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">STAMPD</div>
+    <div class="logo-sub">Owner Console</div>
+  </div>
+  <nav class="nav">
+    <button class="nav-item active" data-page="page-overview">📊 Overview</button>
+    <button class="nav-item" data-page="page-applications">📥 Applications <span class="nav-badge" id="badge-apps" style="display:none">0</span></button>
+    <button class="nav-item" data-page="page-vendors">🏪 Vendors</button>
+    <button class="nav-item" data-page="page-revenue">💰 Revenue</button>
+  </nav>
+  <div class="sidebar-foot">
+    <button class="btn-logout" id="btn-logout">Log out</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- OVERVIEW -->
+  <section class="page active" id="page-overview">
+    <h1 class="page-title">OVERVIEW</h1>
+    <p class="page-sub">Platform-wide numbers across every vendor and customer.</p>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Live Vendors</div><div class="stat-value" id="s-vendors">—</div><div class="stat-change">Claimed &amp; active</div></div>
+      <div class="stat-card"><div class="stat-label">Pending Applications</div><div class="stat-value" id="s-pending">—</div><div class="stat-change">Awaiting your approval</div></div>
+      <div class="stat-card"><div class="stat-label">Customers</div><div class="stat-value" id="s-customers">—</div><div class="stat-change">Unique across all vendors</div></div>
+      <div class="stat-card"><div class="stat-label">Stamps Issued</div><div class="stat-value" id="s-stamps">—</div><div class="stat-change">All time</div></div>
+      <div class="stat-card"><div class="stat-label">Rewards Redeemed</div><div class="stat-value" id="s-rewards">—</div><div class="stat-change">All time</div></div>
+      <div class="stat-card"><div class="stat-label">Est. MRR</div><div class="stat-value" id="s-mrr">$0</div><div class="stat-change" id="s-mrr-note">Stripe not connected yet</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Top vendors by stamps</span></div>
+      <table>
+        <thead><tr><th>Business</th><th>Customers</th><th>Stamps</th><th>Rewards</th></tr></thead>
+        <tbody id="tbl-top"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- APPLICATIONS -->
+  <section class="page" id="page-applications">
+    <h1 class="page-title">APPLICATIONS</h1>
+    <p class="page-sub">Businesses that signed up on stampd.co.nz. Approving generates a claim link they use to create their login.</p>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Pending</span></div>
+      <table>
+        <thead><tr><th>Business</th><th>Contact</th><th>Type</th><th>Applied</th><th>Action</th></tr></thead>
+        <tbody id="tbl-apps"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Processed</span></div>
+      <table>
+        <thead><tr><th>Business</th><th>Contact</th><th>Status</th><th>Claimed?</th><th>Action</th></tr></thead>
+        <tbody id="tbl-apps-done"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- VENDORS -->
+  <section class="page" id="page-vendors">
+    <h1 class="page-title">VENDORS</h1>
+    <p class="page-sub">Live vendor accounts. These have a login and can issue stamps.</p>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Business</th><th>Email</th><th>Customers</th><th>Stamps</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="tbl-vendors"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- REVENUE -->
+  <section class="page" id="page-revenue">
+    <h1 class="page-title">REVENUE</h1>
+    <p class="page-sub">Subscription status per vendor. Populates once Stripe is connected.</p>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Paying</div><div class="stat-value" id="r-paying">0</div><div class="stat-change">Active subscriptions</div></div>
+      <div class="stat-card"><div class="stat-label">Trialling</div><div class="stat-value" id="r-trial">0</div><div class="stat-change">In free trial</div></div>
+      <div class="stat-card"><div class="stat-label">Unpaid</div><div class="stat-value" id="r-none">0</div><div class="stat-change">No subscription</div></div>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Business</th><th>Plan</th><th>Status</th><th>Since</th></tr></thead>
+        <tbody id="tbl-revenue"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, getDocs, updateDoc,
+  collection, query, where, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM",
+  authDomain: "stampd-e4353.firebaseapp.com",
+  projectId: "stampd-e4353",
+  storageBucket: "stampd-e4353.firebasestorage.app",
+  messagingSenderId: "272536856213",
+  appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+/* ── PRICING (used for MRR estimate until Stripe is live) ── */
+const PLAN_PRICE = { starter: 29, standard: 49, pro: 99 };
+
+/* ── UI helpers ── */
+function toast(msg, kind = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${kind}`;
+  setTimeout(() => { t.className = 'toast'; }, 3200);
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-NZ', { day:'numeric', month:'short', year:'numeric' });
+}
+
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.page).classList.add('active');
+  });
+});
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  await signOut(auth);
+  window.location.href = 'vendor-login.html';
+});
+
+/* ── ACCESS GATE ────────────────────────────────────────────
+   Owner access is granted by the existence of owners/{uid}.
+   Firestore rules enforce this server-side too — this check is
+   only to avoid showing a broken page to a non-owner.
+   ──────────────────────────────────────────────────────────── */
+function denyGate(title, msg) {
+  document.getElementById('gate-spinner').style.display = 'none';
+  document.getElementById('gate-title').textContent = title;
+  document.getElementById('gate-msg').innerHTML = msg;
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    denyGate('Not signed in', 'You need to sign in with the owner account. <a href="vendor-login.html">Go to login →</a>');
+    return;
+  }
+  try {
+    const ownerSnap = await getDoc(doc(db, 'owners', user.uid));
+    if (!ownerSnap.exists()) {
+      denyGate('Access denied', `<strong>${esc(user.email)}</strong> is not an owner account.<br><br>To grant access, create a document at <code>owners/${esc(user.uid)}</code> in Firestore.`);
+      return;
+    }
+  } catch (e) {
+    denyGate('Access check failed', 'Could not verify owner access. Check that the Firestore rules for <code>owners</code> have been deployed.');
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  loadAll();
+});
+
+/* ── DATA LOAD ── */
+let applications = [];   // vendorApplications docs
+let vendors      = [];   // vendors/{uid} docs
+let cards        = [];   // stampCards docs
+
+async function loadAll() {
+  try {
+    const [appSnap, venSnap, cardSnap] = await Promise.all([
+      getDocs(collection(db, 'vendorApplications')),
+      getDocs(collection(db, 'vendors')),
+      getDocs(collection(db, 'stampCards')),
+    ]);
+
+    applications = appSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    cards        = cardSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Legacy guard: the old signup wrote applications into `vendors` with an
+    // auto-ID and status 'pending'. Those were never linked to an Auth user.
+    // Hide them so the counts don't lie. migrate.html clears them out for good,
+    // after which this filter is a no-op.
+    const looksLikeOrphanApplication = v =>
+      v.status === 'pending' && !v.claimedAt && !v.pin && !v.stampGoal;
+
+    vendors = venSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(v => !looksLikeOrphanApplication(v));
+
+    renderOverview();
+    renderApplications();
+    renderVendors();
+    renderRevenue();
+  } catch (e) {
+    console.error(e);
+    toast('Failed to load data — check Firestore rules.', 'err');
+  }
+}
+
+/* ── OVERVIEW ── */
+function renderOverview() {
+  const pending = applications.filter(a => (a.status || 'pending') === 'pending');
+  const uniqueCustomers = new Set(cards.map(c => c.customerUid).filter(Boolean));
+  const totalStamps  = cards.reduce((n, c) => n + (c.totalLifetimeStamps || c.stamps || 0), 0);
+  const totalRewards = cards.reduce((n, c) => n + (c.rewardsRedeemed || 0), 0);
+
+  document.getElementById('s-vendors').textContent   = vendors.length;
+  document.getElementById('s-pending').textContent   = pending.length;
+  document.getElementById('s-customers').textContent = uniqueCustomers.size;
+  document.getElementById('s-stamps').textContent    = totalStamps;
+  document.getElementById('s-rewards').textContent   = totalRewards;
+
+  const mrr = vendors.reduce((sum, v) =>
+    v.subscriptionStatus === 'active' ? sum + (PLAN_PRICE[v.plan] || 0) : sum, 0);
+  document.getElementById('s-mrr').textContent = '$' + mrr;
+  if (mrr > 0) document.getElementById('s-mrr-note').textContent = 'From active subscriptions';
+
+  const badge = document.getElementById('badge-apps');
+  if (pending.length) { badge.textContent = pending.length; badge.style.display = 'inline-block'; }
+  else { badge.style.display = 'none'; }
+
+  // Top vendors by stamps
+  const byVendor = {};
+  cards.forEach(c => {
+    if (!c.vendorId) return;
+    const b = byVendor[c.vendorId] ||= { customers: 0, stamps: 0, rewards: 0 };
+    b.customers++;
+    b.stamps  += c.totalLifetimeStamps || c.stamps || 0;
+    b.rewards += c.rewardsRedeemed || 0;
+  });
+  const rows = vendors
+    .map(v => ({ name: v.businessName || '(unnamed)', ...(byVendor[v.id] || { customers:0, stamps:0, rewards:0 }) }))
+    .sort((a, b) => b.stamps - a.stamps)
+    .slice(0, 10);
+
+  document.getElementById('tbl-top').innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td class="biz-name">${esc(r.name)}</td>
+        <td>${r.customers}</td><td>${r.stamps}</td><td>${r.rewards}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" class="empty">No stamp activity yet.</td></tr>';
+}
+
+/* ── APPLICATIONS ── */
+function claimUrl(id) {
+  return `${location.origin}/claim.html?id=${encodeURIComponent(id)}`;
+}
+
+function renderApplications() {
+  const pending   = applications.filter(a => (a.status || 'pending') === 'pending');
+  const processed = applications.filter(a => (a.status || 'pending') !== 'pending');
+
+  document.getElementById('tbl-apps').innerHTML = pending.length
+    ? pending.map(a => `<tr>
+        <td><div class="biz-name">${esc(a.businessName)}</div>
+            <div class="biz-meta">${esc(a.address || 'No address given')}</div></td>
+        <td><div>${esc(a.ownerName)}</div>
+            <div class="biz-meta">${esc(a.email)} · ${esc(a.phone)}</div></td>
+        <td>${esc(a.businessType || '—')}</td>
+        <td>${fmtDate(a.registeredAt)}</td>
+        <td>
+          <button class="btn btn-approve" data-approve="${esc(a.id)}">Approve</button>
+          <button class="btn btn-reject"  data-reject="${esc(a.id)}">Reject</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="empty">Nothing waiting. 🎉</td></tr>';
+
+  document.getElementById('tbl-apps-done').innerHTML = processed.length
+    ? processed.map(a => {
+        const claimed = !!a.claimedByUid;
+        return `<tr>
+          <td class="biz-name">${esc(a.businessName)}</td>
+          <td>${esc(a.email)}</td>
+          <td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td>
+          <td><span class="pill ${claimed ? 'claimed' : 'unclaimed'}">${claimed ? 'Claimed' : 'Not yet'}</span></td>
+          <td>${a.status === 'approved' && !claimed
+                ? `<button class="btn btn-copy" data-copy="${esc(a.id)}">Copy claim link</button>` : ''}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="5" class="empty">No processed applications yet.</td></tr>';
+}
+
+document.addEventListener('click', async (e) => {
+  const approveId = e.target.dataset?.approve;
+  const rejectId  = e.target.dataset?.reject;
+  const copyId    = e.target.dataset?.copy;
+
+  if (copyId) {
+    try {
+      await navigator.clipboard.writeText(claimUrl(copyId));
+      toast('Claim link copied to clipboard.');
+    } catch { window.prompt('Copy this claim link:', claimUrl(copyId)); }
+    return;
+  }
+
+  if (approveId) {
+    e.target.disabled = true;
+    try {
+      await updateDoc(doc(db, 'vendorApplications', approveId), {
+        status: 'approved', approvedAt: serverTimestamp(), approvedBy: auth.currentUser.uid
+      });
+      const a = applications.find(x => x.id === approveId);
+      if (a) a.status = 'approved';
+      try { await navigator.clipboard.writeText(claimUrl(approveId)); } catch {}
+      toast('Approved — claim link copied. Send it to the vendor.');
+      renderApplications(); renderOverview();
+    } catch (err) {
+      console.error(err); e.target.disabled = false;
+      toast('Could not approve. Check Firestore rules.', 'err');
+    }
+    return;
+  }
+
+  if (rejectId) {
+    if (!confirm('Reject this application? They will not be able to create an account.')) return;
+    e.target.disabled = true;
+    try {
+      await updateDoc(doc(db, 'vendorApplications', rejectId), {
+        status: 'rejected', rejectedAt: serverTimestamp(), approvedBy: auth.currentUser.uid
+      });
+      const a = applications.find(x => x.id === rejectId);
+      if (a) a.status = 'rejected';
+      toast('Application rejected.');
+      renderApplications(); renderOverview();
+    } catch (err) {
+      console.error(err); e.target.disabled = false;
+      toast('Could not reject. Check Firestore rules.', 'err');
+    }
+  }
+});
+
+/* ── VENDORS ── */
+function renderVendors() {
+  const byVendor = {};
+  cards.forEach(c => {
+    if (!c.vendorId) return;
+    const b = byVendor[c.vendorId] ||= { customers: 0, stamps: 0 };
+    b.customers++;
+    b.stamps += c.totalLifetimeStamps || c.stamps || 0;
+  });
+
+  document.getElementById('tbl-vendors').innerHTML = vendors.length
+    ? vendors.map(v => {
+        const s = byVendor[v.id] || { customers: 0, stamps: 0 };
+        const suspended = v.status === 'suspended';
+        return `<tr>
+          <td><div class="biz-name">${esc(v.businessName || '(unnamed)')}</div>
+              <div class="biz-meta">${esc(v.businessType || '—')}</div></td>
+          <td>${esc(v.email || '—')}</td>
+          <td>${s.customers}</td>
+          <td>${s.stamps}</td>
+          <td><span class="pill ${suspended ? 'rejected' : 'live'}">${suspended ? 'Suspended' : 'Live'}</span></td>
+          <td><button class="btn ${suspended ? 'btn-approve' : 'btn-reject'}"
+                data-toggle="${esc(v.id)}">${suspended ? 'Reactivate' : 'Suspend'}</button></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="6" class="empty">No live vendors yet.</td></tr>';
+}
+
+document.addEventListener('click', async (e) => {
+  const id = e.target.dataset?.toggle;
+  if (!id) return;
+  const v = vendors.find(x => x.id === id);
+  if (!v) return;
+  const next = v.status === 'suspended' ? 'active' : 'suspended';
+  if (next === 'suspended' && !confirm(`Suspend ${v.businessName}? They will not be able to issue stamps.`)) return;
+  e.target.disabled = true;
+  try {
+    await updateDoc(doc(db, 'vendors', id), { status: next, updatedAt: serverTimestamp() });
+    v.status = next;
+    toast(next === 'suspended' ? 'Vendor suspended.' : 'Vendor reactivated.');
+    renderVendors();
+  } catch (err) {
+    console.error(err); e.target.disabled = false;
+    toast('Could not update vendor.', 'err');
+  }
+});
+
+/* ── REVENUE ── */
+function renderRevenue() {
+  let paying = 0, trial = 0, none = 0;
+  vendors.forEach(v => {
+    if (v.subscriptionStatus === 'active') paying++;
+    else if (v.subscriptionStatus === 'trialing') trial++;
+    else none++;
+  });
+  document.getElementById('r-paying').textContent = paying;
+  document.getElementById('r-trial').textContent  = trial;
+  document.getElementById('r-none').textContent   = none;
+
+  document.getElementById('tbl-revenue').innerHTML = vendors.length
+    ? vendors.map(v => `<tr>
+        <td class="biz-name">${esc(v.businessName || '(unnamed)')}</td>
+        <td>${esc(v.plan || '—')}</td>
+        <td><span class="pill ${v.subscriptionStatus === 'active' ? 'approved' : 'pending'}">${esc(v.subscriptionStatus || 'none')}</span></td>
+        <td>${fmtDate(v.subscriptionSince)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" class="empty">No vendors yet.</td></tr>';
+}
+</script>
+</body>
+</html>

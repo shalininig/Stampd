@@ -248,7 +248,10 @@
     submitBtn.innerHTML = '⏳ Registering...';
 
     try {
-      await addDoc(collection(db, 'vendors'), {
+      // Applications live in `vendorApplications`, NOT `vendors`.
+      // `vendors/{uid}` is keyed by Auth UID and is only created once the
+      // owner approves and the vendor claims their account via claim.html.
+      await addDoc(collection(db, 'vendorApplications'), {
         businessName: bizName,
         ownerName: ownerName,
         email: email,

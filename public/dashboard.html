@@ -1007,7 +1007,7 @@
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, getDocs, updateDoc, collection, query, where, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, getDocs, updateDoc, collection, query, where, orderBy, limit, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = { 
     apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM", 
@@ -1074,7 +1074,7 @@
     const phoneInput = document.getElementById('settings-phone');
     if (phoneInput) phoneInput.value = data.phone || '';
     const pinInput = document.getElementById('settings-pin');
-    if (pinInput) pinInput.value = data.staffPin || '';
+    if (pinInput) pinInput.value = data.pin || data.staffPin || '';
   };
 
   // Live Stats counting
@@ -1132,10 +1132,13 @@ window.loadStats = async function() {
     const name = document.getElementById('settings-name')?.value.trim();
     const address = document.getElementById('settings-address')?.value.trim();
     const phone = document.getElementById('settings-phone')?.value.trim();
-    const staffPin = document.getElementById('settings-pin')?.value.trim();
+    const pin = document.getElementById('settings-pin')?.value.trim();
     try {
+      // NOTE: field must be `pin` — stamp.html and the mobile app (app/pin.tsx)
+      // both look up vendors by `pin`. Writing `staffPin` here silently broke
+      // stamping for any vendor who set their PIN via the website.
       await updateDoc(doc(db, 'vendors', vendorUid), {
-        businessName: name, address, phone, staffPin, updatedAt: serverTimestamp()
+        businessName: name, address, phone, pin, staffPin: deleteField(), updatedAt: serverTimestamp()
       });
       alert(' ✅ Business details securely committed!');
     } catch(e) { alert('Error processing updates.'); }

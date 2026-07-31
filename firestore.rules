@@ -1,0 +1,152 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────
+//  Stampd — Firestore security rules
+//
+//  ⚠️  DEPLOYING THIS FILE REPLACES THE RULES CURRENTLY IN THE
+//      FIREBASE CONSOLE. Before running `firebase deploy --only
+//      firestore:rules`, copy the existing rules out of the console
+//      (Firestore → Rules) and check nothing below is missing.
+//
+//  Collections
+//    owners/{uid}              — existence of the doc grants owner access.
+//                                Created by hand in the console only.
+//    vendorApplications/{id}   — public signup form writes here. Owner
+//                                approves. Vendor claims via claim.html.
+//    vendors/{uid}             — LIVE vendor, keyed by Auth UID. Created
+//                                only by a valid claim.
+//    stampCards/{id}           — one per customer+vendor pair.
+// ─────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // get()/exists() inside rules bypass read rules, so this is safe
+    // even though owners/{uid} is not publicly readable.
+    function isOwner() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/owners/$(request.auth.uid));
+    }
+
+    // A claim is valid only if the caller's verified email matches an
+    // application that the owner has already approved.
+    function claimIsValid(appId) {
+      let a = get(/databases/$(database)/documents/vendorApplications/$(appId)).data;
+      return a.status == 'approved'
+          && a.email == request.auth.token.email
+          && !('claimedByUid' in a);
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // ── OWNERS ────────────────────────────────────────────────
+    // Add an owner by creating owners/<their-auth-uid> in the console.
+    // Never writable from the client.
+    match /owners/{uid} {
+      allow get:   if isSignedIn() && request.auth.uid == uid;
+      allow list:  if false;
+      allow write: if false;
+    }
+
+    // ── VENDOR APPLICATIONS ───────────────────────────────────
+    match /vendorApplications/{appId} {
+      // `get` is open so claim.html works before the vendor has an account.
+      // Document IDs are 20-char random — the URL itself is the capability.
+      // Only the owner may enumerate the collection.
+      allow get:  if true;
+      allow list: if isOwner();
+
+      // Public signup form. Force status to 'pending' so nobody can
+      // self-approve, and block the claim fields at creation time.
+      allow create: if request.resource.data.status == 'pending'
+                    && request.resource.data.businessName is string
+                    && request.resource.data.email is string
+                    && !('claimedByUid' in request.resource.data);
+
+      // Owner approves/rejects. The approved vendor may only stamp the
+      // two claim fields and nothing else.
+      allow update: if isOwner()
+                    || (isSignedIn()
+                        && resource.data.status == 'approved'
+                        && resource.data.email == request.auth.token.email
+                        && changedKeys().hasOnly(['claimedByUid', 'claimedAt'])
+                        && request.resource.data.claimedByUid == request.auth.uid);
+
+      allow delete: if isOwner();
+    }
+
+    // ── VENDORS (live accounts) ───────────────────────────────
+    match /vendors/{uid} {
+      // Customers need to read vendor details (name, reward, stampGoal)
+      // and the app looks a vendor up by `pin` when stamping.
+      allow read: if isSignedIn();
+
+      // The ONLY way a vendors/{uid} doc comes into existence.
+      allow create: if isSignedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.applicationId is string
+                    && claimIsValid(request.resource.data.applicationId);
+
+      // A vendor may edit their own record, but may not promote
+      // themselves out of a suspension — only the owner can set status.
+      allow update: if isOwner()
+                    || (isSignedIn()
+                        && request.auth.uid == uid
+                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'applicationId']));
+
+      allow delete: if isOwner()
+                    || (isSignedIn() && request.auth.uid == uid);
+    }
+
+    // ── STAMP CARDS ───────────────────────────────────────────
+    match /stampCards/{cardId} {
+      // Customers list their own cards; vendors list cards for their
+      // business; the owner console lists everything. Rules can't verify
+      // query filters, so this stays at "any signed-in user" — matching
+      // the previous behaviour. Tighten later if it matters.
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && request.resource.data.customerUid == request.auth.uid;
+
+      allow update: if isSignedIn()
+                    && (resource.data.customerUid == request.auth.uid
+                        || resource.data.vendorId == request.auth.uid);
+
+      allow delete: if isSignedIn()
+                    && resource.data.customerUid == request.auth.uid;
+    }
+
+    // ── USERS ─────────────────────────────────────────────────
+    // Carried over unchanged from the previous rules. Only referenced
+    // by account deletion in the app (profile.tsx, settings.tsx).
+    match /users/{userId} {
+      // a signed-in user can read/write their own document
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      // a vendor can read the user docs that belong to them (powers dashboard stats)
+      allow read: if isSignedIn() && resource.data.vendorUid == request.auth.uid;
+      allow read: if isOwner();
+    }
+
+    // ── CUSTOMERS ─────────────────────────────────────────────
+    // Written by login.html on customer signup. Previously any signed-in
+    // user could read/write any customer profile; now scoped to the owner
+    // of the record (doc ID is the customer's Auth UID).
+    match /customers/{customerId} {
+      allow read:  if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == customerId;
+      allow read, write: if isOwner();
+    }
+
+    // Deny anything not matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
