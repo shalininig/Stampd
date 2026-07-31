@@ -146,6 +146,31 @@
   .gate h2 { font-family: 'Bebas Neue', cursive; font-size: 2rem; letter-spacing: 2px; }
   .gate p { color: var(--muted); font-size: 0.9rem; max-width: 380px; }
   .gate a { color: var(--fire); font-weight: 700; }
+  .gate-logo {
+    font-family: 'Bebas Neue', cursive; font-size: 2.4rem; letter-spacing: 6px;
+    background: linear-gradient(135deg, var(--fire), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .gate-form { width: 100%; max-width: 340px; display: none; }
+  .gate-form.show { display: block; }
+  .gate-form input {
+    width: 100%; padding: 13px 15px; border-radius: 11px; background: var(--surface2);
+    border: 1px solid var(--border); color: var(--text);
+    font-family: inherit; font-size: 0.94rem; margin-bottom: 12px;
+  }
+  .gate-form input:focus { outline: none; border-color: var(--fire); }
+  .gate-form button {
+    width: 100%; padding: 14px; border-radius: 11px; border: none;
+    background: linear-gradient(135deg, var(--fire), var(--ember)); color: #fff;
+    font-family: inherit; font-weight: 700; font-size: 0.94rem; cursor: pointer;
+  }
+  .gate-form button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .gate-err {
+    display: none; margin-top: 14px; padding: 11px 14px; border-radius: 10px;
+    background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+    color: #FCA5A5; font-size: 0.84rem; font-weight: 600;
+  }
+  .gate-err.show { display: block; }
   .spinner {
     width: 34px; height: 34px; border: 3px solid var(--border);
     border-top-color: var(--fire); border-radius: 50%;
@@ -174,9 +199,16 @@
 
 <!-- ACCESS GATE -->
 <div class="gate" id="gate">
+  <div class="gate-logo">STAMPD</div>
   <div class="spinner" id="gate-spinner"></div>
   <h2 id="gate-title">Checking access…</h2>
   <p id="gate-msg"></p>
+  <form class="gate-form" id="gate-form" autocomplete="on">
+    <input id="gate-email" type="email" placeholder="Owner email" autocomplete="username">
+    <input id="gate-pass"  type="password" placeholder="Password" autocomplete="current-password">
+    <button type="submit" id="gate-btn">Sign In</button>
+    <div class="gate-err" id="gate-err"></div>
+  </form>
 </div>
 
 <!-- SIDEBAR -->
@@ -276,7 +308,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signOut, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, getDocs, updateDoc,
   collection, query, where, serverTimestamp
@@ -324,10 +356,12 @@ document.querySelectorAll('.nav-item').forEach(btn => {
   });
 });
 
-document.getElementById('btn-logout').addEventListener('click', async () => {
+window.__ownerSignOut = async () => {
   await signOut(auth);
-  window.location.href = 'vendor-login.html';
-});
+  window.location.reload();
+};
+
+document.getElementById('btn-logout').addEventListener('click', window.__ownerSignOut);
 
 /* ── ACCESS GATE ────────────────────────────────────────────
    Owner access is granted by the existence of owners/{uid}.
@@ -336,19 +370,57 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
    ──────────────────────────────────────────────────────────── */
 function denyGate(title, msg) {
   document.getElementById('gate-spinner').style.display = 'none';
+  document.getElementById('gate-form').classList.remove('show');
   document.getElementById('gate-title').textContent = title;
   document.getElementById('gate-msg').innerHTML = msg;
 }
 
+function showLogin() {
+  document.getElementById('gate-spinner').style.display = 'none';
+  document.getElementById('gate-title').textContent = 'Owner Console';
+  document.getElementById('gate-msg').textContent = 'Sign in with the owner account.';
+  document.getElementById('gate-form').classList.add('show');
+  document.getElementById('gate-email').focus();
+}
+
+document.getElementById('gate-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById('gate-err');
+  const btn   = document.getElementById('gate-btn');
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      document.getElementById('gate-email').value.trim(),
+      document.getElementById('gate-pass').value
+    );
+    // onAuthStateChanged takes over from here.
+  } catch (err) {
+    const map = {
+      'auth/invalid-credential': 'Email or password is incorrect.',
+      'auth/wrong-password':     'Email or password is incorrect.',
+      'auth/user-not-found':     'No account found with that email.',
+      'auth/invalid-email':      'That doesn\'t look like a valid email address.',
+      'auth/too-many-requests':  'Too many attempts. Wait a moment and try again.',
+    };
+    errEl.textContent = map[err.code] || 'Could not sign in. Please try again.';
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+});
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    denyGate('Not signed in', 'You need to sign in with the owner account. <a href="vendor-login.html">Go to login →</a>');
+    showLogin();
     return;
   }
   try {
     const ownerSnap = await getDoc(doc(db, 'owners', user.uid));
     if (!ownerSnap.exists()) {
-      denyGate('Access denied', `<strong>${esc(user.email)}</strong> is not an owner account.<br><br>To grant access, create a document at <code>owners/${esc(user.uid)}</code> in Firestore.`);
+      denyGate('Access denied', `<strong>${esc(user.email)}</strong> is not an owner account.<br><br>To grant access, create a document at <code>owners/${esc(user.uid)}</code> in Firestore.<br><br><a href="#" onclick="window.__ownerSignOut();return false;">Sign in as someone else →</a>`);
       return;
     }
   } catch (e) {
