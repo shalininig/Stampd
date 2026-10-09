@@ -83,8 +83,9 @@ service cloud.firestore {
 
     // ── VENDORS (live accounts) ───────────────────────────────
     match /vendors/{uid} {
-      // Customers need to read vendor details (name, reward, stampGoal)
-      // and the app looks a vendor up by `pin` when stamping.
+      // Customers need to read vendor details (name, reward, stampGoal).
+      // The PIN is NOT stored here any more — it lives in vendorSecrets,
+      // which no client can read. Vendors may not set PIN fields either.
       allow read: if isSignedIn();
 
       // The ONLY way a vendors/{uid} doc comes into existence.
@@ -98,29 +99,57 @@ service cloud.firestore {
       allow update: if isOwner()
                     || (isSignedIn()
                         && request.auth.uid == uid
-                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'applicationId']));
+                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'applicationId', 'pin', 'vendorCode']));
 
       allow delete: if isOwner()
                     || (isSignedIn() && request.auth.uid == uid);
     }
 
     // ── STAMP CARDS ───────────────────────────────────────────
+    // Stamps are issued ONLY by the issueStamp Cloud Function, which
+    // runs with admin rights and bypasses these rules. Clients may read
+    // their cards but must never write them — a client write would skip
+    // PIN verification, the daily cap and the rate limit entirely.
     match /stampCards/{cardId} {
-      // Customers list their own cards; vendors list cards for their
-      // business; the owner console lists everything. Rules can't verify
-      // query filters, so this stays at "any signed-in user" — matching
-      // the previous behaviour. Tighten later if it matters.
+      // Rules can't verify query filters, so this stays at "any signed-in
+      // user" — matching the previous behaviour. Tighten later if it matters.
       allow read: if isSignedIn();
 
-      allow create: if isSignedIn()
-                    && request.resource.data.customerUid == request.auth.uid;
-
-      allow update: if isSignedIn()
-                    && (resource.data.customerUid == request.auth.uid
-                        || resource.data.vendorId == request.auth.uid);
+      allow create, update: if false;
 
       allow delete: if isSignedIn()
                     && resource.data.customerUid == request.auth.uid;
+    }
+
+    // ── VENDOR SECRETS ────────────────────────────────────────
+    // Holds each vendor's rotating-PIN secret and static PIN.
+    // NEVER readable or writable from any client, vendor included —
+    // vendors fetch their own via the getVendorPinConfig function.
+    match /vendorSecrets/{vendorId} {
+      allow read, write: if false;
+    }
+
+    // ── PIN ATTEMPTS ──────────────────────────────────────────
+    // Failed-PIN counters used for lockout. Server-only.
+    match /pinAttempts/{key} {
+      allow read, write: if false;
+    }
+
+    // ── REWARDS ───────────────────────────────────────────────
+    // Written only by issueStamp when a card completes, so a reward
+    // survives the card resetting to zero. The customer and the vendor
+    // can see it; only the vendor or owner may mark it redeemed.
+    match /rewards/{rewardId} {
+      allow read: if isSignedIn();
+
+      allow create: if false;
+
+      allow update: if isOwner()
+                    || (isSignedIn()
+                        && resource.data.vendorId == request.auth.uid
+                        && changedKeys().hasOnly(['status', 'redeemedAt']));
+
+      allow delete: if isOwner();
     }
 
     // ── USERS ─────────────────────────────────────────────────

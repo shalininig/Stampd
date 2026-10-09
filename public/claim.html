@@ -115,6 +115,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { startAppCheck } from "/appcheck.js";
 import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -128,6 +129,7 @@ const firebaseConfig = {
 };
 
 const app  = initializeApp(firebaseConfig);
+startAppCheck(app);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
@@ -176,7 +178,7 @@ let appData = null;
     }
 
     $('f-biz').textContent  = appData.businessName || 'Your business';
-    $('f-meta').textContent = [appData.businessType, appData.address].filter(Boolean).join(' · ') || '—';
+    $('f-meta').textContent = [appData.businessType, appData.suburb, appData.address].filter(Boolean).join(' · ') || '—';
     $('f-email').value      = appData.email || '';
     show('st-form');
   } catch (e) {
@@ -212,11 +214,11 @@ $('f-btn').addEventListener('click', async () => {
       phone:         appData.phone || '',
       businessType:  appData.businessType || '',
       address:       appData.address || '',
+      suburb:        appData.suburb || '',
       city:          appData.city || '',
       status:        'active',
       stampGoal:     10,
       reward:        '',
-      pin:           '',
       applicationId: appId,
       claimedAt:     serverTimestamp(),
       createdAt:     serverTimestamp()

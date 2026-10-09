@@ -263,6 +263,7 @@ body {
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { startAppCheck } from "/appcheck.js";
   import {
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
     GoogleAuthProvider, signInWithPopup, updateProfile, sendPasswordResetEmail
@@ -281,6 +282,7 @@ body {
   };
 
   const app = initializeApp(firebaseConfig);
+  startAppCheck(app);
   const auth = getAuth(app);
   const db = getFirestore(app);
   const googleProvider = new GoogleAuthProvider();

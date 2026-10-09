@@ -374,11 +374,13 @@ body {
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { startAppCheck } from "/appcheck.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc,
     serverTimestamp, increment
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM",
@@ -390,6 +392,7 @@ body {
   };
 
   const app = initializeApp(firebaseConfig);
+  startAppCheck(app);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
@@ -445,71 +448,49 @@ body {
     goTo('sc-error');
   }
 
-  // ADD STAMP TO FIRESTORE
-  async function addStamp() {
+  // ADD STAMP — issued by the server (functions/index.js).
+  // The PIN is verified there; it never reaches this page.
+  async function addStamp(pin) {
     const goal = vendorData.stampGoal || 10;
-    const cardId = `${customerUid}_${vendorId}`;
-    const cardRef = doc(db, 'stampCards', cardId);
-
     try {
-      const snap = await getDoc(cardRef);
-      let currentStamps = 0;
+      const issueStamp = httpsCallable(getFunctions(app, "australia-southeast1"), "issueStamp");
+      const res = await issueStamp({ vendorId, pin: pin || "" });
+      const out = res.data;
 
-      if (snap.exists()) {
-        const data = snap.data();
-
-        // Check one-per-day rule
-        if (data.lastStampDate === today) {
-          // Already stamped today
-          cardData = data;
-          const earned = data.stamps || 0;
-          renderStamps('already-stamps', earned, goal);
-          document.getElementById('already-card-label').textContent = vendorData.businessName + ' stamp card';
-          const remaining = goal - 1 - earned;
-          document.getElementById('already-progress').textContent =
-            remaining > 0 ? `${earned} of ${goal-1} — ${remaining} more for your reward!` : 'Reward ready to claim! 🎁';
-          goTo('sc-already');
-          return;
-        }
-        currentStamps = data.stamps || 0;
-      }
-
-      const newStamps = currentStamps + 1;
-      const isReward = newStamps >= goal;
-
-      // Write to Firestore
-      await setDoc(cardRef, {
-        customerUid,
-        vendorId,
-        vendorName: vendorData.businessName,
-        stamps: isReward ? 0 : newStamps, // Reset after reward
-        lastStampDate: today,
-        totalLifetimeStamps: increment(1),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      if (isReward) {
-        // Reward screen
-        document.getElementById('reward-biz-name').textContent = vendorData.businessName;
-        document.getElementById('reward-value').textContent = vendorData.reward || 'Free item — ask staff!';
+      if (out.rewardEarned) {
+        document.getElementById('reward-biz-name').textContent = out.businessName;
+        document.getElementById('reward-value').textContent = out.reward || 'Free item — ask staff!';
         document.getElementById('reward-msg').textContent =
-          `You collected all ${goal} stamps at ${vendorData.businessName}!`;
+          `You collected all ${out.stampGoal} stamps at ${out.businessName}!`;
         goTo('sc-reward');
       } else {
-        // Success screen
-        renderStamps('success-stamps', newStamps, goal);
-        document.getElementById('success-card-label').textContent = vendorData.businessName + ' stamp card';
-        const remaining = (goal - 1) - newStamps;
+        renderStamps('success-stamps', out.stamps, goal);
+        document.getElementById('success-card-label').textContent = out.businessName + ' stamp card';
+        const remaining = (goal - 1) - out.stamps;
         document.getElementById('success-msg').textContent =
-          `Stamp ${newStamps} added to your card at ${vendorData.businessName}!`;
+          `Stamp ${out.stamps} added to your card at ${out.businessName}!`;
         document.getElementById('success-progress').textContent =
-          remaining > 0 ? `${newStamps} of ${goal-1} — ${remaining} more for your reward!` : 'One more stamp for your reward! 🎁';
+          remaining > 0 ? `${out.stamps} of ${goal-1} — ${remaining} more for your reward!` : 'One more stamp for your reward! 🎁';
         goTo('sc-success');
       }
-
+      return true;
     } catch (e) {
       console.error(e);
+      if (e && e.code === 'functions/permission-denied') return false;   // wrong PIN
+      if (e && e.code === 'functions/failed-precondition') {
+        showError(e.message || 'You have already collected a stamp here today.');
+        return true;
+      }
+      if (e && e.code === 'functions/resource-exhausted') {
+        showError(e.message || 'Too many incorrect attempts. Please wait and try again.');
+        return true;
+      }
+      if (e && (e.code === 'functions/unavailable' || e.code === 'unavailable')) {
+        showError('No internet connection. Check your mobile data or wifi and try again.');
+        return true;
+      }
       showError('Could not add your stamp. Please try again.');
+      return true;
     }
   }
 
@@ -536,10 +517,9 @@ body {
     }
   }
 
-  function checkPin() {
-    if (pinEntered === String(vendorData.pin)) {
-      addStamp();
-    } else {
+  async function checkPin() {
+    const ok = await addStamp(pinEntered);
+    if (!ok) {
       // Wrong PIN
       for (let i = 0; i < 4; i++) {
         document.getElementById('pd' + i).className = 'pin-dot error';
@@ -577,7 +557,7 @@ body {
         vendorData = vendorSnap.data();
         const emoji = bizEmoji(vendorData.businessType);
 
-        if (vendorData.requiresPin) {
+        if (vendorData.requirePin !== undefined ? vendorData.requirePin !== false : vendorData.requiresPin !== false) {
           // Show PIN screen
           document.getElementById('pin-biz-logo').textContent = emoji;
           document.getElementById('pin-biz-name').textContent = vendorData.businessName;

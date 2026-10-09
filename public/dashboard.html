@@ -941,12 +941,19 @@
                 <input class="form-input" type="text" id="settings-address" value="Loading…">
               </div>
               <div class="form-group">
+                <label class="form-label">Suburb</label>
+                <input class="form-input" type="text" id="settings-suburb" placeholder="e.g. Newlands">
+                <small style="display:block;margin-top:6px;opacity:0.6;">Customers find you by suburb. Suburb only — no city or postcode.</small>
+              </div>
+              <div class="form-group">
                 <label class="form-label">Contact Line</label>
                 <input class="form-input" type="text" id="settings-phone" value="Loading…">
               </div>
               <div class="form-group">
-                <label class="form-label">Validation Staff PIN</label>
-                <input class="form-input" type="number" id="settings-pin" placeholder="4-digit PIN" min="1000" max="9999">
+                <label class="form-label">Staff PIN</label>
+                <input class="form-input" type="text" id="settings-pin" readonly value="Loading…" style="letter-spacing:6px;font-weight:800;">
+                <small style="display:block;margin-top:6px;opacity:0.6;">Issued automatically and held on the server — staff enter it on a customer's phone. Keep it to staff only.</small>
+                <button class="btn" id="btn-new-pin" style="margin-top:10px;" onclick="regeneratePin()">Generate a new PIN</button>
               </div>
               <button class="send-btn" onclick="saveBusinessDetails()">💾 Save Details</button>
             </div>
@@ -1006,7 +1013,9 @@
 
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { startAppCheck } from "/appcheck.js";
   import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
   import { getFirestore, doc, getDoc, getDocs, updateDoc, collection, query, where, orderBy, limit, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = { 
@@ -1019,6 +1028,7 @@
   };
 
   const app = initializeApp(firebaseConfig);
+  startAppCheck(app);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
@@ -1073,8 +1083,9 @@
     if (addrInput) addrInput.value = data.address || '';
     const phoneInput = document.getElementById('settings-phone');
     if (phoneInput) phoneInput.value = data.phone || '';
-    const pinInput = document.getElementById('settings-pin');
-    if (pinInput) pinInput.value = data.pin || data.staffPin || '';
+    const subInput = document.getElementById('settings-suburb');
+    if (subInput) subInput.value = data.suburb || '';
+    loadStaffPin(data);
   };
 
   // Live Stats counting
@@ -1132,16 +1143,53 @@ window.loadStats = async function() {
     const name = document.getElementById('settings-name')?.value.trim();
     const address = document.getElementById('settings-address')?.value.trim();
     const phone = document.getElementById('settings-phone')?.value.trim();
-    const pin = document.getElementById('settings-pin')?.value.trim();
+    const suburb = document.getElementById('settings-suburb')?.value.trim();
     try {
-      // NOTE: field must be `pin` — stamp.html and the mobile app (app/pin.tsx)
-      // both look up vendors by `pin`. Writing `staffPin` here silently broke
-      // stamping for any vendor who set their PIN via the website.
+      // The PIN is NOT written from here any more. It lives in vendorSecrets,
+      // which no client can read or write, and the security rules reject any
+      // attempt to set `pin` on a vendor document.
       await updateDoc(doc(db, 'vendors', vendorUid), {
-        businessName: name, address, phone, pin, staffPin: deleteField(), updatedAt: serverTimestamp()
+        businessName: name, address, suburb, phone,
+        staffPin: deleteField(), pin: deleteField(),
+        updatedAt: serverTimestamp()
       });
       alert(' ✅ Business details securely committed!');
     } catch(e) { alert('Error processing updates.'); }
+  };
+
+  // ── Staff PIN (server-owned) ──────────────────────────────
+  async function loadStaffPin(data) {
+    const el = document.getElementById('settings-pin');
+    if (!el) return;
+    if (data && data.pinMode === 'rotating') {
+      el.value = 'Rotating';
+      el.style.letterSpacing = '1px';
+      const btn = document.getElementById('btn-new-pin');
+      if (btn) btn.style.display = 'none';
+      return;
+    }
+    try {
+      const call = httpsCallable(getFunctions(app, 'australia-southeast1'), 'getVendorPinConfig');
+      const res = await call({});
+      el.value = res.data.staticPin || '—';
+    } catch (e) {
+      console.error(e);
+      el.value = 'Unavailable';
+    }
+  }
+
+  window.regeneratePin = async function() {
+    const el = document.getElementById('settings-pin');
+    if (!confirm('Issue a new PIN? The current one stops working straight away.')) return;
+    try {
+      const call = httpsCallable(getFunctions(app, 'australia-southeast1'), 'regenerateStaticPin');
+      const res = await call({});
+      if (el) el.value = res.data.staticPin;
+      alert('✅ New PIN issued. Tell your staff.');
+    } catch (e) {
+      console.error(e);
+      alert('Could not issue a new PIN. Please try again.');
+    }
   };
 
   // Logout

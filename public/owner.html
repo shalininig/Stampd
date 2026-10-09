@@ -277,6 +277,15 @@
   <section class="page" id="page-vendors">
     <h1 class="page-title">VENDORS</h1>
     <p class="page-sub">Live vendor accounts. These have a login and can issue stamps.</p>
+    <div class="panel" style="margin-bottom:16px;padding:16px">
+      <strong>Vendor codes</strong>
+      <p style="margin:6px 0 12px;font-size:.85rem;opacity:.7">
+        Fills in the 8-character lookup code on vendors created before that field existed.
+        Run once. Safe to run again — it skips vendors that already have one.
+      </p>
+      <button class="btn btn-approve" id="btn-backfill-codes">Backfill vendor codes</button>
+      <span id="backfill-result" style="margin-left:12px;font-size:.85rem;opacity:.8"></span>
+    </div>
     <div class="panel">
       <table>
         <thead><tr><th>Business</th><th>Email</th><th>Customers</th><th>Stamps</th><th>Status</th><th>Action</th></tr></thead>
@@ -308,7 +317,9 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { startAppCheck } from "/appcheck.js";
 import { getAuth, signOut, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 import {
   getFirestore, doc, getDoc, getDocs, updateDoc,
   collection, query, where, serverTimestamp
@@ -324,6 +335,7 @@ const firebaseConfig = {
 };
 
 const app  = initializeApp(firebaseConfig);
+startAppCheck(app);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
@@ -598,6 +610,25 @@ document.addEventListener('click', async (e) => {
       toast('Could not reject. Check Firestore rules.', 'err');
     }
   }
+});
+
+/* ── MAINTENANCE ── */
+document.getElementById('btn-backfill-codes')?.addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const out = document.getElementById('backfill-result');
+  btn.disabled = true;
+  out.textContent = 'Working…';
+  try {
+    const call = httpsCallable(getFunctions(app, 'australia-southeast1'), 'backfillVendorCodes');
+    const res = await call({});
+    out.textContent = `Checked ${res.data.scanned} vendors, updated ${res.data.updated}.`;
+    toast('Vendor codes backfilled.');
+  } catch (err) {
+    console.error(err);
+    out.textContent = '';
+    toast('Backfill failed — is the function deployed?', 'err');
+  }
+  btn.disabled = false;
 });
 
 /* ── VENDORS ── */

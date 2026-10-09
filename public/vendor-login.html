@@ -297,6 +297,7 @@ body {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM",
@@ -308,6 +309,18 @@ body {
   };
 
   firebase.initializeApp(firebaseConfig);
+
+  /* App Check — see /appcheck.js for the shared key and the reasoning.
+     This page uses the compat SDK, so it activates separately.
+     Does nothing until the key is filled in; never breaks the page. */
+  import("/appcheck.js")
+    .then(m => m.appCheckSiteKey())
+    .then(key => {
+      if (!key) return;
+      firebase.appCheck().activate(
+        new firebase.appCheck.ReCaptchaEnterpriseProvider(key), true);
+    })
+    .catch(err => console.warn("[Stampd] App Check did not start:", err));
   const auth = firebase.auth();
   const db = firebase.firestore();
 

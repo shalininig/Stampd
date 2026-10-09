@@ -180,7 +180,10 @@
           <option>Bakery</option><option>Food Truck</option><option>Other</option>
         </select>
       </div>
-      <div class="form-group"><label>Business Address (NZ)</label><input type="text" id="address" placeholder="e.g. 123 Queen Street, Auckland"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Street Address (NZ)</label><input type="text" id="address" placeholder="e.g. 123 Queen Street"></div>
+        <div class="form-group"><label>Suburb *</label><input type="text" id="suburb" placeholder="e.g. Newlands" required><small style="display:block;margin-top:6px;font-size:0.72rem;color:rgba(255,255,255,0.45);font-weight:600;">Customers search by suburb, so keep it to the suburb only — no city or postcode.</small></div>
+      </div>
       <button class="submit-btn" id="submit-btn" onclick="handleSubmit()">🚀 Register My Business Free</button>
       <div class="error-msg" id="error-msg">Something went wrong. Please try again.</div>
       <p class="form-note">✓ Free to join &nbsp;&nbsp; ✓ No credit card needed &nbsp;&nbsp; ✓ No tech skills required</p>
@@ -212,6 +215,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { startAppCheck } from "/appcheck.js";
   import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -225,6 +229,7 @@
   };
 
   const app = initializeApp(firebaseConfig);
+  startAppCheck(app);
   const db = getFirestore(app);
 
   window.handleSubmit = async function() {
@@ -234,10 +239,11 @@
     const phone = document.getElementById('phone').value.trim();
     const bizType = document.getElementById('biz-type').value;
     const address = document.getElementById('address').value.trim();
+    const suburb = document.getElementById('suburb').value.trim();
     const errorMsg = document.getElementById('error-msg');
     const submitBtn = document.getElementById('submit-btn');
 
-    if (!bizName || !ownerName || !email || !phone || !bizType) {
+    if (!bizName || !ownerName || !email || !phone || !bizType || !suburb) {
       errorMsg.textContent = 'Please fill in all required fields.';
       errorMsg.style.display = 'block';
       return;
@@ -258,6 +264,7 @@
         phone: phone,
         businessType: bizType,
         address: address,
+        suburb: suburb,
         city: '',
         status: 'pending',
         registeredAt: serverTimestamp()
