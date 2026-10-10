@@ -96,14 +96,14 @@ service cloud.firestore {
                     // Billing fields are set by the server only — never at sign-up.
                     // claim.html writes status 'active' — that, and nothing else.
                     && (!('status' in request.resource.data) || request.resource.data.status == 'active')
-                    && !request.resource.data.keys().hasAny(['plan', 'subscriptionStatus', 'trialEndsAt', 'stripeCustomerId', 'stripeSubscriptionId', 'currentPeriodEnd', 'cancelAtPeriodEnd', 'subscriptionSince', 'pin', 'vendorCode']);
+                    && !request.resource.data.keys().hasAny(['plan', 'subscriptionStatus', 'trialEndsAt', 'stripeCustomerId', 'stripeSubscriptionId', 'currentPeriodEnd', 'cancelAtPeriodEnd', 'subscriptionSince', 'paused', 'graceEndsAt', 'billingEmailCycle', 'billingEmailsSent', 'pin', 'vendorCode']);
 
       // A vendor may edit their own record, but may not promote
       // themselves out of a suspension — only the owner can set status.
       allow update: if isOwner()
                     || (isSignedIn()
                         && request.auth.uid == uid
-                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'trialEndsAt', 'stripeCustomerId', 'stripeSubscriptionId', 'currentPeriodEnd', 'cancelAtPeriodEnd', 'subscriptionSince', 'applicationId', 'pin', 'vendorCode']));
+                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'trialEndsAt', 'stripeCustomerId', 'stripeSubscriptionId', 'currentPeriodEnd', 'cancelAtPeriodEnd', 'subscriptionSince', 'paused', 'graceEndsAt', 'billingEmailCycle', 'billingEmailsSent', 'applicationId', 'pin', 'vendorCode']));
 
       allow delete: if isOwner()
                     || (isSignedIn() && request.auth.uid == uid);
@@ -175,6 +175,13 @@ service cloud.firestore {
       allow read:  if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == customerId;
       allow read, write: if isOwner();
+    }
+
+    // ── EMAIL LOG ─────────────────────────────────────────────
+    // Every trial/billing reminder sent (lifecycle.js). Server writes only.
+    match /emailLog/{id} {
+      allow read: if isOwner();
+      allow write: if false;
     }
 
     // ── CONFIG ────────────────────────────────────────────────

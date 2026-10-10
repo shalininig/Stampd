@@ -91,6 +91,7 @@ const db = {
   collection: (name) => ({
     ...queryRef(name),
     doc: (id) => docRef(`${name}/${id || "auto" + ++autoId}`),
+    add: async (data) => { const r = docRef(`${name}/auto${++autoId}`); await r.set(data); return r; },
   }),
   runTransaction: async (fn) => {
     const tx = {

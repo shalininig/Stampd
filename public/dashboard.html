@@ -1281,9 +1281,8 @@ window.loadStats = async function() {
   // Billing lives on the website only (never in the phone apps — store rules).
   // Prices must match PLANS in functions/billing.js.
   const PLAN_INFO = {
-    starter:  { name: 'Starter',  price: 29, feats: ['Digital stamp cards and rewards', 'Customer list', 'Fixed staff PIN'] },
-    standard: { name: 'Standard', price: 49, feats: ['Everything in Starter', 'Rotating staff PIN — changes on a timer, so it can\'t be shared'] },
-    pro:      { name: 'Pro',      price: 99, feats: ['Everything in Standard'] },
+    starter:  { name: 'Starter',  price: 29, feats: ['Digital stamp cards and rewards', 'Reward alerts to your customers', 'Customer list', 'Fixed staff PIN'] },
+    standard: { name: 'Standard', price: 49, feats: ['Everything in Starter', '★ Featured at the top of Discover in your suburb', 'Rotating staff PIN — changes on a timer, so it can\'t be shared'] },
   };
   const fmtDay = (ts) => {
     const d = ts && ts.toDate ? ts.toDate() : null;
@@ -1305,12 +1304,12 @@ window.loadStats = async function() {
 
     if (hasSub && st === 'trialing') {
       title = `${info ? info.name : 'Your'} plan — free trial`;
-      body = `Your free trial runs until <strong>${trialEnd}</strong>. Your first payment of NZ$${info ? info.price : ''} is taken then — nothing before.`;
+      body = `Your free trial runs until <strong>${trialEnd}</strong>. Your first payment of NZ$${info ? info.price : ''} + GST is taken then — nothing before.`;
     } else if (hasSub && st === 'active' && v.cancelAtPeriodEnd) {
       cls = 'warn'; title = `${info ? info.name : 'Your'} plan — cancelled`;
       body = `You've cancelled. Everything keeps working until <strong>${fmtDay(v.currentPeriodEnd)}</strong>. Changed your mind? Use Manage billing to undo it.`;
     } else if (hasSub && st === 'active') {
-      title = `${info ? info.name : 'Your'} plan — NZ$${info ? info.price : ''} a month`;
+      title = `${info ? info.name : 'Your'} plan — NZ$${info ? info.price : ''} + GST a month`;
       body = v.currentPeriodEnd ? `Next payment on <strong>${fmtDay(v.currentPeriodEnd)}</strong>.` : 'You\'re all set.';
     } else if (hasSub) {
       cls = 'bad'; title = 'Payment didn\'t go through';
@@ -1319,12 +1318,17 @@ window.loadStats = async function() {
       cls = left <= 14 ? 'warn' : 'good';
       title = `Free trial — ${left} day${left === 1 ? '' : 's'} left`;
       body = `Your free trial ends on <strong>${trialEnd}</strong>. Choose a plan below any time — you won't be charged until the trial ends.`;
+    } else if (v.paused) {
+      cls = 'bad'; title = 'Stamping is paused';
+      body = 'Your customers can\'t collect stamps right now because there\'s no plan. Their cards and stamps are safe — choose a plan below and everything switches back on straight away.';
     } else if (st === 'trial_ended' || (st === 'trialing' && left !== null && left <= 0)) {
       cls = 'bad'; title = 'Your free trial has ended';
-      body = 'Choose a plan below to carry on. Your customers\' cards and stamps are safe.';
+      body = (v.graceEndsAt ? `Stamping will pause on <strong>${fmtDay(v.graceEndsAt)}</strong> unless you choose a plan. ` : '')
+        + 'Choose a plan below to carry on. Your customers\' cards and stamps are safe.';
     } else if (st === 'canceled') {
       cls = 'warn'; title = 'Your plan has ended';
-      body = 'Choose a plan below to start again. Your customers\' cards and stamps are safe.';
+      body = (v.graceEndsAt ? `Stamping will pause on <strong>${fmtDay(v.graceEndsAt)}</strong> unless you choose a plan. ` : '')
+        + 'Choose a plan below to start again. Your customers\' cards and stamps are safe.';
     } else {
       cls = 'warn'; title = 'Choose a plan';
       body = 'Pick the plan that suits your business.';
@@ -1340,7 +1344,7 @@ window.loadStats = async function() {
     document.getElementById('plan-grid').innerHTML = Object.entries(PLAN_INFO).map(([id, p]) => `
       <div class="plan-card">
         <div class="plan-name">${p.name}</div>
-        <div class="plan-price">NZ$${p.price}<small> / month</small></div>
+        <div class="plan-price">NZ$${p.price}<small> + GST / month</small></div>
         <div class="plan-feat">${p.feats.map(f => '✓ ' + f).join('<br>')}</div>
         <button class="send-btn" onclick="choosePlan('${id}', this)">Choose ${p.name}</button>
       </div>`).join('');
@@ -1348,6 +1352,7 @@ window.loadStats = async function() {
     const badge = document.getElementById('plan-badge');
     if (badge) {
       badge.textContent = hasSub && info ? `⚡ ${info.name.toUpperCase()} PLAN`
+        : v.paused ? '⛔ PAUSED — CHOOSE A PLAN'
         : st === 'trialing' && left > 0 ? `⏳ FREE TRIAL · ${left} DAYS`
         : '⚠️ CHOOSE A PLAN';
     }

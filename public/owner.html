@@ -411,6 +411,35 @@
       <button class="btn btn-approve" id="btn-save-trial" style="margin-left:8px">Save</button>
       <span id="trial-saved" style="margin-left:10px;font-size:.85rem;opacity:.8"></span>
     </div>
+    <div class="panel" style="padding:18px 20px">
+      <strong>When a trial ends without a plan</strong>
+      <p style="margin:6px 0 12px;font-size:.85rem;opacity:.7">
+        Emails go only to vendors with <b>no plan and no card</b> — Stripe is checked right before each one.
+        Schedule: 30 days before · 7 days before · trial ended · 7 days before the pause · paused.
+        Stamping pauses 14 days after the trial ends; picking a plan switches it straight back on.
+      </p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <label>Reminder emails
+          <select id="cfg-emails" class="search" style="max-width:120px;flex:none;margin-left:6px">
+            <option value="off">Off</option><option value="on">On</option>
+          </select></label>
+        <label>Pause stamping after grace
+          <select id="cfg-pause" class="search" style="max-width:120px;flex:none;margin-left:6px">
+            <option value="on">On</option><option value="off">Off</option>
+          </select></label>
+        <button class="btn btn-approve" id="btn-save-life">Save</button>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-copy" id="btn-preview">Who would be emailed today?</button>
+        <select id="test-kind" class="search" style="max-width:230px;flex:none">
+          <option value="trial_30">30 days before</option><option value="trial_7">7 days before</option>
+          <option value="trial_ended">Trial ended</option><option value="grace_7">Pause in 7 days</option>
+          <option value="paused">Paused</option><option value="no_plan">No-trial welcome</option>
+        </select>
+        <button class="btn btn-copy" id="btn-test-email">Send me a test email</button>
+      </div>
+      <div id="preview-out" style="margin-top:12px;font-size:.85rem"></div>
+    </div>
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-label">Paying</div><div class="stat-value" id="r-paying">0</div><div class="stat-change">Active subscriptions</div></div>
       <div class="stat-card"><div class="stat-label">Trialling</div><div class="stat-value" id="r-trial">0</div><div class="stat-change">In free trial</div></div>
@@ -440,7 +469,7 @@ import { startAppCheck } from "/appcheck.js";
 import { getAuth, signOut, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 import {
-  getFirestore, doc, getDoc, getDocs, updateDoc, setDoc,
+  getFirestore, doc, getDoc, getDocs, updateDoc, setDoc, deleteField, orderBy,
   collection, query, where, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -618,6 +647,7 @@ async function loadAll() {
     renderCustomers();
     renderActivity();
     loadTrialSetting();
+    loadLifecycleSetting();
   } catch (e) {
     console.error(e);
     toast('Failed to load data — check Firestore rules.', 'err');
@@ -857,6 +887,18 @@ document.getElementById('drawer-close').addEventListener('click', closeDrawer);
 document.getElementById('drawer-bg').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
+async function loadVendorEmails(id) {
+  const el = document.getElementById('d-emails');
+  if (!el) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'emailLog'), where('vendorId', '==', id)));
+    const rows = snap.docs.map(d => d.data()).sort((a, b) => ms(b.sentAt) - ms(a.sentAt));
+    el.innerHTML = rows.length
+      ? rows.map(r => `${fmtDate(r.sentAt)} — ${esc(EMAIL_KIND[r.kind] || r.kind)} <span style="opacity:.6">(${esc(r.to)})</span>`).join('<br>')
+      : 'None.';
+  } catch (e) { el.textContent = 'Could not load.'; }
+}
+
 function showVendor(id) {
   const v = vendors.find(x => x.id === id);
   if (!v) return;
@@ -901,6 +943,11 @@ function showVendor(id) {
     <input type="date" id="d-trial" value="${trialEnd}">
     <div><button class="btn btn-approve" data-saveplan="${esc(id)}">Save plan</button></div>
 
+    ${v.paused ? '<div class="pill rejected" style="margin:10px 0">Stamping paused — no plan</div>'
+      : v.graceEndsAt ? `<div class="pill warn" style="margin:10px 0">No plan — stamping pauses ${fmtDate(v.graceEndsAt)}</div>` : ''}
+    <h3>Reminder emails sent</h3>
+    <div id="d-emails" class="biz-meta">Loading…</div>
+
     <h3>Account</h3>
     <button class="btn ${v.status === 'suspended' ? 'btn-approve' : 'btn-reject'}" data-toggle="${esc(id)}">
       ${v.status === 'suspended' ? 'Reactivate' : 'Suspend'}</button>
@@ -914,6 +961,7 @@ function showVendor(id) {
       </tbody></table>${vc.length > 50 ? '<div class="biz-meta" style="margin-top:8px">Showing the 50 most recent.</div>' : ''}`
       : '<div class="biz-meta">No customers yet.</div>'}
   `);
+  loadVendorEmails(id);
 }
 
 document.addEventListener('click', async (e) => {
@@ -933,11 +981,14 @@ document.addEventListener('click', async (e) => {
     const subscriptionStatus = document.getElementById('d-sub').value;
     const trial = document.getElementById('d-trial').value;
     const patch = { plan, subscriptionStatus, updatedAt: serverTimestamp() };
+    // Giving a vendor a plan or trial by hand switches them straight back on.
+    if (['active', 'trialing'].includes(subscriptionStatus)) { patch.paused = false; patch.graceEndsAt = deleteField(); }
     patch.trialEndsAt = trial ? Timestamp.fromDate(new Date(trial + 'T23:59:59+12:00')) : null;
     planBtn.disabled = true;
     try {
       await updateDoc(doc(db, 'vendors', id), patch);
       Object.assign(v, { plan, subscriptionStatus, trialEndsAt: patch.trialEndsAt });
+      if (patch.paused === false) { v.paused = false; delete v.graceEndsAt; }
       toast('Plan saved.');
       renderVendors(); renderRevenue(); renderOverview();
     } catch (err) {
@@ -1057,6 +1108,10 @@ function renderAttention() {
       items.push({ pill: 'warn', tag: 'No stamps yet', text: v.businessName, vendor: v.id, why: `joined ${ago(joined)} and hasn't stamped anyone — check they're set up` });
     else if (s.last && now - s.last > 14 * day)
       items.push({ pill: 'warn', tag: 'Gone quiet', text: v.businessName, vendor: v.id, why: `last stamp ${ago(s.last)}` });
+    if (v.paused)
+      items.push({ pill: 'warn', tag: 'Paused', text: v.businessName, vendor: v.id, why: 'no plan — stamping is paused until they choose one' });
+    else if (v.graceEndsAt)
+      items.push({ pill: 'pending', tag: 'No plan', text: v.businessName, vendor: v.id, why: `stamping pauses ${fmtDate(v.graceEndsAt)}` });
     if (v.subscriptionStatus === 'trialing' && v.trialEndsAt && ms(v.trialEndsAt) - now < 14 * day)
       items.push({ pill: 'pending', tag: 'Trial ending', text: v.businessName, vendor: v.id, why: `free trial ends ${fmtDate(v.trialEndsAt)}` });
   });
@@ -1113,6 +1168,54 @@ document.getElementById('btn-save-trial').addEventListener('click', async (e) =>
   } catch (err) {
     console.error(err); toast('Could not save — are the Firestore rules deployed?', 'err');
   }
+  e.target.disabled = false;
+});
+
+/* ── TRIAL-END REMINDERS & PAUSE (config/billing; lifecycle.js) ── */
+const EMAIL_KIND = { trial_30: '30 days before', trial_7: '7 days before', trial_ended: 'Trial ended',
+  grace_7: 'Pause in 7 days', paused: 'Paused', no_plan: 'Choose a plan (no trial)' };
+async function loadLifecycleSetting() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'billing'));
+    const c = snap.exists() ? snap.data() : {};
+    document.getElementById('cfg-emails').value = c.reminderEmails === true ? 'on' : 'off';
+    document.getElementById('cfg-pause').value = c.pauseStamping === false ? 'off' : 'on';
+  } catch (e) { console.warn('lifecycle setting', e); }
+}
+document.getElementById('btn-save-life').addEventListener('click', async (e) => {
+  const reminderEmails = document.getElementById('cfg-emails').value === 'on';
+  const pauseStamping = document.getElementById('cfg-pause').value === 'on';
+  if (!confirm(`Reminder emails: ${reminderEmails ? 'ON' : 'OFF'}\nPause stamping after grace: ${pauseStamping ? 'ON' : 'OFF'}\n\nSave?`)) return;
+  e.target.disabled = true;
+  try {
+    await setDoc(doc(db, 'config', 'billing'), { reminderEmails, pauseStamping, updatedAt: serverTimestamp() }, { merge: true });
+    toast('Saved. Takes effect from the next daily run (10am NZ).');
+  } catch (err) { console.error(err); toast('Could not save — are the Firestore rules deployed?', 'err'); }
+  e.target.disabled = false;
+});
+document.getElementById('btn-preview').addEventListener('click', async (e) => {
+  const out = document.getElementById('preview-out');
+  e.target.disabled = true; out.textContent = 'Checking…';
+  try {
+    const res = await httpsCallable(getFunctions(app, 'australia-southeast1'), 'previewTrialReminders')({});
+    const rows = res.data.rows || [];
+    const due = rows.filter(r => !r.alreadySent);
+    out.innerHTML = (res.data.reminderEmails ? '' : '<div class="biz-meta" style="margin-bottom:6px">Emails are OFF — nothing will actually be sent.</div>')
+      + (due.length
+        ? '<table class="mini-table"><thead><tr><th>Business</th><th>Email</th><th>Message</th></tr></thead><tbody>'
+          + due.map(r => `<tr><td>${esc(r.businessName)}</td><td>${esc(r.email)}</td><td>${esc(EMAIL_KIND[r.kind] || r.kind)}</td></tr>`).join('')
+          + '</tbody></table><div class="biz-meta" style="margin-top:6px">Based on the last sync — Stripe is re-checked for each one before anything is sent.</div>'
+        : '<div class="biz-meta">Nobody is due an email today.</div>');
+  } catch (err) { console.error(err); out.textContent = 'Could not check — is the function deployed?'; }
+  e.target.disabled = false;
+});
+document.getElementById('btn-test-email').addEventListener('click', async (e) => {
+  const kind = document.getElementById('test-kind').value;
+  e.target.disabled = true;
+  try {
+    const res = await httpsCallable(getFunctions(app, 'australia-southeast1'), 'sendTestReminder')({ kind });
+    toast(`Test email sent to ${res.data.sentTo}.`);
+  } catch (err) { console.error(err); toast('Could not send the test email.', 'err'); }
   e.target.disabled = false;
 });
 

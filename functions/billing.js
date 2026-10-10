@@ -220,8 +220,13 @@ async function syncVendor(db, admin, stripe, vendorId, vendor) {
   const fields = vendorFieldsFromSubscription(admin, sub);
   // Don't wipe a trial date we set ourselves when Stripe has none.
   if (!fields.trialEndsAt) delete fields.trialEndsAt;
-  await db.collection("vendors").doc(vendorId).set(fields, { merge: true });
-  return fields;
+  // A plan with a card on file switches a paused vendor straight back on.
+  const live = ["trialing", "active", "past_due"].includes(fields.subscriptionStatus);
+  const write = live
+    ? { ...fields, paused: false, graceEndsAt: admin.firestore.FieldValue.delete() }
+    : fields;
+  await db.collection("vendors").doc(vendorId).set(write, { merge: true });
+  return live ? { ...fields, paused: false, graceEndsAt: null } : fields;
 }
 
 function build({ db, admin, REGION }) {
@@ -330,6 +335,8 @@ function build({ db, admin, REGION }) {
 
 module.exports = {
   build,
+  STRIPE_SECRET_KEY,
+  _stripe: () => stripeFactory(STRIPE_SECRET_KEY.value()),
   newVendorTrial,
   trialMonthsFor,
   TRIAL_CHOICES,

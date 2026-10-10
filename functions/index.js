@@ -6,6 +6,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const { sendToUser } = require("./notify");
 const billing = require("./billing");
+const lifecycle = require("./lifecycle");
 const {
   DEFAULT_INTERVAL_SECONDS,
   validPins,
@@ -158,6 +159,14 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     throw new HttpsError("not-found", "That business isn't on Stampd.");
   }
   const vendor = vendorSnap.data();
+
+  // Trial / plan ended and the grace period is over — see lifecycle.js.
+  if (await lifecycle.isStampingPaused(db, vendor)) {
+    throw new HttpsError(
+      "failed-precondition",
+      "This business's Stampd rewards are paused right now. Your stamps are safe — please let the staff know."
+    );
+  }
 
   if (vendor.status === "suspended") {
     throw new HttpsError("failed-precondition", "This business isn't active on Stampd right now.");
@@ -625,4 +634,11 @@ async function cardExpiryWarnings() {
 // ── Vendor subscriptions (Stripe) ─────────────────────────────
 // See billing.js.
 Object.assign(exports, billing.build({ db, admin, REGION }));
+
+// ── Trial ending: reminders, grace period, pause ──────────────
+// See lifecycle.js.
+{
+  const { dailyTrialReminders, previewTrialReminders, sendTestReminder } = lifecycle.build({ db, admin, REGION });
+  Object.assign(exports, { dailyTrialReminders, previewTrialReminders, sendTestReminder });
+}
 
