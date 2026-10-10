@@ -199,7 +199,8 @@ function emailFor(kind, v) {
 
 async function sendEmail(token, to, toName, msg) {
   if (sendImpl) return sendImpl(to, toName, msg);
-  const auth = String(token || "").startsWith("Zoho-enczapikey") ? token : `Zoho-enczapikey ${token}`;
+  const t = String(token || "").trim(); // pasted keys can carry a stray newline
+  const auth = t.startsWith("Zoho-enczapikey") ? t : `Zoho-enczapikey ${t}`;
   const res = await fetch(ZEPTO_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: auth },
