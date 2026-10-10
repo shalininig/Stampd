@@ -92,6 +92,55 @@ async function clearFailures(key) {
   await db.collection("pinAttempts").doc(key).set({ failed: 0 }, { merge: true });
 }
 
+// ── Offers and expiry ────────────────────────────────────────
+// The deal (goal + reward) is copied onto the stamp card when the card
+// starts, so a vendor changing their offer never silently moves the goal
+// posts on someone part-way through. The customer chooses whether to switch
+// (chooseOffer below). A card with no stamps simply follows the current offer.
+// See the "Design decisions - cards, rewards, offers" project doc, sections 5–7.
+
+function currentTerms(vendor) {
+  return {
+    stampGoal: vendor.stampGoal || 10,
+    reward: vendor.reward || "Free item",
+  };
+}
+
+// The terms a card is actually running on. Cards from before this change
+// carry no terms of their own and follow the vendor's current offer.
+function cardTermsFor(card, vendor) {
+  const cur = currentTerms(vendor);
+  if (!card || !(card.stamps > 0) || !card.stampGoal) return cur;
+  return { stampGoal: card.stampGoal, reward: card.reward || cur.reward };
+}
+
+function addMonths(date, months) {
+  const d = new Date(date.getTime());
+  const day = d.getUTCDate();
+  d.setUTCMonth(d.getUTCMonth() + months);
+  // 31 Aug + 6 months must not roll over into March.
+  if (d.getUTCDate() < day) d.setUTCDate(0);
+  return d;
+}
+
+// 6, 12 or 0 (= never). Counted from the LAST stamp, so only a card nobody
+// has touched in that time ever closes.
+function expiryMonths(vendor) {
+  const m = Number(vendor.cardExpiryMonths || 0);
+  return m === 6 || m === 12 ? m : 0;
+}
+
+function cardExpiresAt(card, vendor) {
+  const months = expiryMonths(vendor);
+  if (!months || !card || !card.lastStampAt || !card.lastStampAt.toDate) return null;
+  return addMonths(card.lastStampAt.toDate(), months);
+}
+
+function cardIsExpired(card, vendor, now = new Date()) {
+  const at = cardExpiresAt(card, vendor);
+  return !!(at && (card.stamps || 0) > 0 && at <= now);
+}
+
 // ── issueStamp ───────────────────────────────────────────────
 // The ONLY way a stamp is created. Clients can no longer write
 // stampCards directly (see firestore.rules).
@@ -163,8 +212,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     }
   }
 
-  const stampGoal = vendor.stampGoal || 10;
-  const rewardText = vendor.reward || "Free item";
+  const cur = currentTerms(vendor);
 
   // The vendor screens show who the customer is. Nothing was writing it, so
   // every card and reward read back as an anonymous "Customer". Take it from
@@ -179,17 +227,27 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     let stamps = 1;
     let totalLifetime = 1;
     let stampsToday = 1;
+    let terms = cur;
+    let expired = false;
 
     if (snap.exists) {
       const card = snap.data();
-      stamps = (card.stamps || 0) + 1;
+      expired = cardIsExpired(card, vendor);
+      // An expired card starts again from nothing, on the current offer.
+      const before = expired ? 0 : card.stamps || 0;
+      terms = expired ? cur : cardTermsFor(card, vendor);
+      stamps = before + 1;
       totalLifetime = (card.totalLifetimeStamps || 0) + 1;
       const last = card.lastStampAt ? card.lastStampAt.toDate() : null;
       stampsToday = last && last >= dayStart ? (card.stampsToday || 0) + 1 : 1;
     }
 
+    const stampGoal = terms.stampGoal;
+    const rewardText = terms.reward;
     const rewardEarned = stamps >= stampGoal;
     const stampsAfter = rewardEarned ? 0 : stamps;
+    // Once a card completes, the next one starts on whatever is current.
+    const nextTerms = rewardEarned ? cur : terms;
 
     tx.set(
       cardRef,
@@ -200,9 +258,21 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
         customerEmail,
         vendorName: vendor.businessName || "Business",
         stamps: stampsAfter,
+        stampGoal: nextTerms.stampGoal,
+        reward: nextTerms.reward,
         totalLifetimeStamps: totalLifetime,
         stampsToday,
         lastStampAt: admin.firestore.FieldValue.serverTimestamp(),
+        // Cleared whenever the card's terms are reset to the current offer.
+        ...(rewardEarned || expired || !snap.exists
+          ? { keptAgainst: admin.firestore.FieldValue.delete() }
+          : {}),
+        ...(expired
+          ? {
+              expiredCount: admin.firestore.FieldValue.increment(1),
+              lastExpiredAt: admin.firestore.FieldValue.serverTimestamp(),
+            }
+          : {}),
       },
       { merge: true }
     );
@@ -223,19 +293,114 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
       });
     }
 
-    return { stamps: rewardEarned ? stampGoal : stampsAfter, rewardEarned };
+    return {
+      stamps: rewardEarned ? stampGoal : stampsAfter,
+      rewardEarned,
+      stampGoal,
+      reward: rewardText,
+      expired,
+    };
   });
 
   return {
     businessName: vendor.businessName || "Business",
     stamps: result.stamps,
-    stampGoal,
-    reward: rewardText,
+    stampGoal: result.stampGoal,
+    reward: result.reward,
     rewardEarned: result.rewardEarned,
+    // True when an old card had lapsed and this stamp started a new one.
+    cardRestarted: result.expired,
     // What this vendor calls what they count ("visits", "cuts", ...), so the
     // success screen can say "3 of 5 visits" rather than always "stamps".
     countWord: vendor.countWord || "stamps",
   };
+});
+
+// ── chooseOffer ──────────────────────────────────────────────
+// A customer part-way through a card, whose vendor has since changed the
+// offer, picks: keep going on the old deal, or switch with their stamps
+// carried over. Nobody ever loses stamps. If they already have enough for
+// the new goal, switching earns the new reward on the spot.
+exports.chooseOffer = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Please sign in.");
+  const vendorId = String((request.data && request.data.vendorId) || "").trim();
+  const choice = String((request.data && request.data.choice) || "");
+  if (!vendorId || (choice !== "keep" && choice !== "switch")) {
+    throw new HttpsError("invalid-argument", "Missing vendor or choice.");
+  }
+
+  const vendorSnap = await db.collection("vendors").doc(vendorId).get();
+  if (!vendorSnap.exists) throw new HttpsError("not-found", "That business isn't on Stampd.");
+  const vendor = vendorSnap.data();
+  const cur = currentTerms(vendor);
+
+  const tok = (request.auth && request.auth.token) || {};
+  const customerName = String(tok.name || (tok.email ? String(tok.email).split("@")[0] : "") || "Customer").slice(0, 60);
+  const customerEmail = String(tok.email || "").slice(0, 120);
+
+  const cardRef = db.collection("stampCards").doc(`${uid}_${vendorId}`);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(cardRef);
+    if (!snap.exists) throw new HttpsError("not-found", "No card here yet.");
+    const card = snap.data();
+    const old = cardTermsFor(card, vendor);
+    const stamps = card.stamps || 0;
+
+    if (choice === "keep") {
+      tx.set(cardRef, { keptAgainst: cur }, { merge: true });
+      return { stamps, stampGoal: old.stampGoal, reward: old.reward, rewardEarned: false };
+    }
+
+    // Switch.
+    let left = stamps;
+    let rewardEarned = false;
+    if (stamps >= cur.stampGoal) {
+      rewardEarned = true;
+      left = Math.min(stamps - cur.stampGoal, cur.stampGoal - 1);
+      tx.set(db.collection("rewards").doc(), {
+        customerUid: uid,
+        customerName,
+        customerEmail,
+        vendorId,
+        vendorName: vendor.businessName || "Business",
+        reward: cur.reward,
+        status: "unredeemed",
+        earnedAt: admin.firestore.FieldValue.serverTimestamp(),
+        viaOfferSwitch: true,
+      });
+    }
+    tx.set(
+      cardRef,
+      {
+        stamps: left,
+        stampGoal: cur.stampGoal,
+        reward: cur.reward,
+        keptAgainst: admin.firestore.FieldValue.delete(),
+        switchedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return { stamps: left, stampGoal: cur.stampGoal, reward: cur.reward, rewardEarned };
+  });
+});
+
+// ── countPartwayCustomers ────────────────────────────────────
+// Vendors only. Before saving a new offer the vendor is told the truth:
+// "14 customers are part-way through. They'll be offered the choice."
+exports.countPartwayCustomers = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Please sign in.");
+  const v = await db.collection("vendors").doc(uid).get();
+  if (!v.exists) throw new HttpsError("permission-denied", "Not a vendor account.");
+  const vendor = v.data();
+  const snap = await db.collection("stampCards").where("vendorId", "==", uid).get();
+  let n = 0;
+  snap.forEach((d) => {
+    const c = d.data();
+    if ((c.stamps || 0) > 0 && !cardIsExpired(c, vendor)) n++;
+  });
+  return { partway: n };
 });
 
 // ── getVendorPinConfig ───────────────────────────────────────
@@ -405,7 +570,47 @@ exports.dailyCustomerReminders = onSchedule(
       if (n) sent++;
     }
     console.log(`[dailyCustomerReminders] reward reminders sent: ${sent}`);
-    if (typeof cardExpiryWarnings === "function") await cardExpiryWarnings();
+    await cardExpiryWarnings();
   }
 );
+
+// Card-expiry heads-up: once per card, 3 weeks before it lapses.
+// Called from dailyCustomerReminders.
+const EXPIRY_WARNING_DAYS = 21;
+
+async function cardExpiryWarnings() {
+  const vendors = await db.collection("vendors").where("cardExpiryMonths", ">", 0).get();
+  const now = Date.now();
+  let sent = 0;
+  for (const v of vendors.docs) {
+    const vendor = v.data();
+    if (!expiryMonths(vendor)) continue;
+    const cards = await db.collection("stampCards").where("vendorId", "==", v.id).get();
+    for (const d of cards.docs) {
+      const c = d.data();
+      if (!((c.stamps || 0) > 0)) continue;
+      const at = cardExpiresAt(c, vendor);
+      if (!at) continue;
+      const daysLeft = Math.ceil((at.getTime() - now) / 86400000);
+      if (daysLeft <= 0 || daysLeft > EXPIRY_WARNING_DAYS) continue;
+      const stampKey = c.lastStampAt.toMillis();
+      if (c.expiryWarnedFor === stampKey) continue; // already warned for this stretch
+      await d.ref.set({ expiryWarnedFor: stampKey }, { merge: true });
+
+      const terms = cardTermsFor(c, vendor);
+      const left = Math.max(terms.stampGoal - c.stamps, 0);
+      const word = String(vendor.countWord || "stamps");
+      const when = daysLeft <= 7 ? `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}` : `in ${Math.round(daysLeft / 7)} weeks`;
+      const n = await sendToUser(db, admin, c.customerUid, {
+        title: `Your ${vendor.businessName || "Stampd"} card expires ${when}`,
+        body: left === 1
+          ? `One more visit and your ${terms.reward} is yours.`
+          : `You're ${c.stamps} of ${terms.stampGoal} ${word}. Visit before then to keep them.`,
+        data: { type: "card_expiry", vendorId: v.id },
+      });
+      if (n) sent++;
+    }
+  }
+  console.log(`[cardExpiryWarnings] sent: ${sent}`);
+}
 

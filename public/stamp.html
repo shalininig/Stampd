@@ -455,11 +455,13 @@ body {
   // ADD STAMP — issued by the server (functions/index.js).
   // The PIN is verified there; it never reaches this page.
   async function addStamp(pin) {
-    const goal = vendorData.stampGoal || 10;
     try {
       const issueStamp = httpsCallable(getFunctions(app, "australia-southeast1"), "issueStamp");
       const res = await issueStamp({ vendorId, pin: pin || "" });
       const out = res.data;
+      // The card's own goal — it may differ from the vendor's current offer
+      // if the customer is finishing a card started on an older deal.
+      const goal = out.stampGoal || vendorData.stampGoal || 10;
 
       if (out.rewardEarned) {
         document.getElementById('reward-biz-name').textContent = out.businessName;

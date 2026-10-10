@@ -465,6 +465,11 @@ body {
             reward = v.reward || reward;
           }
         } catch(e) {}
+        // A card part-way through keeps the deal it started on.
+        if ((card.stamps || 0) > 0 && card.stampGoal) {
+          stampGoal = card.stampGoal;
+          reward = card.reward || reward;
+        }
 
         const stamps = card.stamps || 0;
         const lifetime = card.totalLifetimeStamps || stamps;

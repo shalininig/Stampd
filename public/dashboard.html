@@ -865,16 +865,26 @@
             <div class="card-header"><div class="card-title">Config Reward Criteria</div></div>
             <div class="form-group">
               <label class="form-label">Reward Description</label>
-              <input class="form-input" type="text" id="sc-reward" placeholder="e.g. Free Regular Coffee">
+              <input class="form-input" type="text" id="sc-reward" maxlength="40" placeholder="Free flat white · Free haircut · Free callout">
+              <div style="font-size:12px;opacity:.6;margin-top:6px">Up to 40 characters — customers see this on their card.</div>
             </div>
             <div class="form-group">
               <label class="form-label">Total Stamps Required</label>
-              <select class="form-select">
+              <select class="form-select" id="sc-goal">
                 <option value="5">5 Stamps</option>
                 <option value="8">8 Stamps</option>
                 <option value="10" selected>10 Stamps</option>
                 <option value="12">12 Stamps</option>
               </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cards Expire After</label>
+              <select class="form-select" id="sc-expiry" onchange="document.getElementById('sc-expiry-hint').textContent = this.value === '0' ? 'Cards never expire. An old offer stays live for anyone part-way through, for as long as they keep the card.' : 'Counted from a customer\'s last visit. Customers get a reminder 3 weeks before.'">
+                <option value="6">6 months</option>
+                <option value="12">12 months</option>
+                <option value="0" selected>Never</option>
+              </select>
+              <div id="sc-expiry-hint" style="font-size:12px;opacity:.6;margin-top:6px">Cards never expire. An old offer stays live for anyone part-way through, for as long as they keep the card.</div>
             </div>
             <div class="form-group">
               <label class="form-label">Stamp Icon Theme</label>
@@ -1067,6 +1077,22 @@
     const rewardInput = document.getElementById('sc-reward');
     if (rewardInput) rewardInput.value = data.reward || '';
 
+    // Show the vendor's REAL goal. This used to always show 10, so saving
+    // just a new reward quietly reset every vendor's goal to 10.
+    const goalSel = document.getElementById('sc-goal');
+    if (goalSel) {
+      const g = String(data.stampGoal || 10);
+      if (![...goalSel.options].some(o => o.value === g)) {
+        const o = document.createElement('option'); o.value = g; o.textContent = g + ' Stamps'; goalSel.appendChild(o);
+      }
+      goalSel.value = g;
+    }
+    const expSel = document.getElementById('sc-expiry');
+    if (expSel) {
+      expSel.value = [6, 12].includes(Number(data.cardExpiryMonths)) ? String(data.cardExpiryMonths) : '0';
+      expSel.onchange && expSel.onchange();
+    }
+
     document.getElementById('qr-modal-biz').textContent = name + ' · stampd.co.nz';
     
 // expose to the classic script (module scope is not global)
@@ -1099,7 +1125,6 @@ window.loadStats = async function() {
   try {
     const snap = await getDocs(query(collection(db, 'stampCards'), where('vendorId', '==', vendorUid)));
     let totalCustomers = 0, visitedToday = 0, activeThisWeek = 0, rewardsIssued = 0;
-    const goal = (vendorData && vendorData.stampGoal) ? vendorData.stampGoal : 10;
     const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     snap.forEach(d => {
@@ -1110,8 +1135,12 @@ window.loadStats = async function() {
         if (last >= startOfToday) visitedToday++;
         if (last >= weekAgo) activeThisWeek++;
       }
-      rewardsIssued += Math.floor((data.totalLifetimeStamps || 0) / goal);
     });
+    // Real rewards, not lifetime stamps divided by today's goal.
+    try {
+      const r = await getDocs(query(collection(db, 'rewards'), where('vendorId', '==', vendorUid)));
+      rewardsIssued = r.size;
+    } catch (e) {}
     const statCards = {
       'stat-customers': { val: totalCustomers, change: 'Total customers tracked' },
       'stat-today': { val: visitedToday, change: 'Visited today' },
@@ -1132,13 +1161,34 @@ window.loadStats = async function() {
   // Save changes
   window.saveStampCard = async function() {
     if (!vendorUid) return;
-    const reward = document.getElementById('sc-reward')?.value.trim();
-    const goalEl = document.querySelector('#page-stampcard .form-select');
-    const stampGoal = goalEl ? parseInt(goalEl.value) : 10;
+    const reward = (document.getElementById('sc-reward')?.value || '').trim().slice(0, 40);
+    const goalEl = document.getElementById('sc-goal');
+    const stampGoal = goalEl ? parseInt(goalEl.value) || 10 : 10;
+    const expEl = document.getElementById('sc-expiry');
+    const cardExpiryMonths = expEl ? parseInt(expEl.value) || 0 : 0;
+
+    // Changing the offer is never blocked, but the vendor sees the truth first.
+    const offerChanging = !vendorData
+      || stampGoal !== (vendorData.stampGoal || 10)
+      || reward !== (vendorData.reward || '');
+    if (offerChanging) {
+      let partway = -1;
+      try {
+        const call = httpsCallable(getFunctions(app, 'australia-southeast1'), 'countPartwayCustomers');
+        partway = (await call({})).data.partway || 0;
+      } catch (e) {}
+      if (partway !== 0) {
+        const who = partway < 0 ? 'Any customers part-way through a card'
+          : partway === 1 ? '1 customer is part-way through a card. They'
+          : partway + ' customers are part-way through a card. They';
+        if (!confirm('Change your offer?\n\n' + who + ' keep their stamps and will be offered the choice to switch to the new offer or finish on the old one. New customers get the new offer straight away.')) return;
+      }
+    }
     try {
       await updateDoc(doc(db, 'vendors', vendorUid), {
-        reward, stampGoal, updatedAt: serverTimestamp()
+        reward, stampGoal, cardExpiryMonths, updatedAt: serverTimestamp()
       });
+      if (vendorData) Object.assign(vendorData, { reward, stampGoal, cardExpiryMonths });
       alert(' ✅ Stamp card updated!');
     } catch(e) { alert('Error saving. Please try again.'); }
   };
