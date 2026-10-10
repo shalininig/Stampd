@@ -12,7 +12,7 @@
  * key must never take the live site down.
  */
 
-const APPCHECK_SITE_KEY = "REPLACE_WITH_RECAPTCHA_ENTERPRISE_SITE_KEY";
+const APPCHECK_SITE_KEY = "6Lf35-ctAAAAAG-g2PJfmWPhumYN1h7XLHVbwKSi";
 
 const SDK = "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js";
 
