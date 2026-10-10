@@ -305,6 +305,8 @@ body {
         <div class="banner-sub" id="banner-sub">Scan a QR code at any Stampd business to start collecting</div>
       </div>
 
+      <div id="verify-banner" style="display:none;margin:0 0 16px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,184,48,0.45);background:rgba(255,184,48,0.08);font-size:0.85rem;line-height:1.5"></div>
+
       <div class="section-title">Your Stamp Cards</div>
       <div class="cards-list" id="cards-list">
         <div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem;font-weight:600">Loading your cards…</div>
@@ -391,7 +393,7 @@ body {
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { startAppCheck } from "/appcheck.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, getDocs,
     collection, query, where
@@ -553,6 +555,20 @@ body {
     document.getElementById('profile-avatar').textContent = initial;
     document.getElementById('profile-name').textContent = user.displayName || firstName;
     document.getElementById('profile-email').textContent = user.email;
+
+    // Unconfirmed email: a gentle nudge with a resend link. Stamping isn't
+    // blocked — confirming is how they get back in if they lose the password.
+    if (!user.emailVerified) {
+      const vb = document.getElementById('verify-banner');
+      vb.innerHTML = `📧 Please confirm your email — we sent a link to <b></b>. <a href="#" id="resend-verify" style="color:var(--gold);font-weight:700">Send it again</a>`;
+      vb.querySelector('b').textContent = user.email;
+      vb.style.display = 'block';
+      document.getElementById('resend-verify').onclick = async (ev) => {
+        ev.preventDefault();
+        try { await sendEmailVerification(user); ev.target.textContent = 'Sent ✓'; }
+        catch (e) { ev.target.textContent = 'Please try again in a few minutes'; }
+      };
+    }
 
     // Load stamp cards
     const stats = await loadStampCards(user.uid);

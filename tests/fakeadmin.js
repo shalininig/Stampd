@@ -56,6 +56,7 @@ function docRef(path) {
     get: async () => snapOf(path, id),
     set: async (data, opts) => applyWrite(path, data, !!(opts && opts.merge)),
     update: async (data) => applyWrite(path, data, true),
+    delete: async () => { store.delete(path); },
   };
 }
 
@@ -73,6 +74,7 @@ function cmp(a, op, b) {
 function queryRef(coll, filters = []) {
   return {
     where: (f, op, v) => queryRef(coll, [...filters, [f, op, v]]),
+    limit: () => queryRef(coll, filters),
     get: async () => {
       const docs = [];
       for (const [p] of store) {

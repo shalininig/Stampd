@@ -359,6 +359,16 @@
   <section class="page" id="page-customers">
     <h1 class="page-title">CUSTOMERS</h1>
     <p class="page-sub">Everyone with at least one stamp card. Use this when a customer asks about a missing stamp or reward.</p>
+    <div class="panel" style="padding:18px 20px">
+      <strong>Unconfirmed accounts</strong>
+      <p style="margin:6px 0 12px;font-size:.85rem;opacity:.7">
+        Accounts that never confirmed their email, are over 30 days old and have no stamp cards — almost always bots or typos.
+        Nothing is deleted automatically; each one is re-checked before deleting.
+      </p>
+      <button class="btn btn-copy" id="btn-find-unconfirmed">Find them</button>
+      <button class="btn btn-reject" id="btn-delete-unconfirmed" style="display:none"></button>
+      <div id="unconfirmed-out" style="margin-top:12px;font-size:.85rem"></div>
+    </div>
     <div class="panel">
       <div class="toolbar">
         <input class="search" id="customer-search" placeholder="Search by name or email…">
@@ -1062,6 +1072,41 @@ function showCustomer(uid) {
     </tbody></table>` : '<div class="biz-meta">None yet.</div>'}
   `);
 }
+
+/* ── UNCONFIRMED ACCOUNTS (signup.js) ── */
+let unconfirmed = [];
+document.getElementById('btn-find-unconfirmed').addEventListener('click', async (e) => {
+  const out = document.getElementById('unconfirmed-out');
+  const del = document.getElementById('btn-delete-unconfirmed');
+  e.target.disabled = true; out.textContent = 'Looking…'; del.style.display = 'none';
+  try {
+    const res = await httpsCallable(getFunctions(app, 'australia-southeast1'), 'listUnconfirmedAccounts')({});
+    unconfirmed = res.data.accounts || [];
+    out.innerHTML = unconfirmed.length
+      ? '<table class="mini-table"><thead><tr><th>Email</th><th>Created</th></tr></thead><tbody>'
+        + unconfirmed.map(a => `<tr><td>${esc(a.email || a.uid)}</td><td>${fmtDate(a.created)}</td></tr>`).join('')
+        + '</tbody></table>'
+      : '<div class="biz-meta">None — all clear.</div>';
+    if (unconfirmed.length) {
+      del.textContent = `Delete these ${unconfirmed.length}`;
+      del.style.display = 'inline-block';
+    }
+  } catch (err) { console.error(err); out.textContent = 'Could not check — is the function deployed?'; }
+  e.target.disabled = false;
+});
+document.getElementById('btn-delete-unconfirmed').addEventListener('click', async (e) => {
+  if (!unconfirmed.length) return;
+  if (!confirm(`Permanently delete ${unconfirmed.length} unconfirmed account(s)? They have no stamp cards. This can't be undone.`)) return;
+  e.target.disabled = true;
+  try {
+    const res = await httpsCallable(getFunctions(app, 'australia-southeast1'), 'deleteUnconfirmedAccounts')({ uids: unconfirmed.map(a => a.uid) });
+    toast(`Deleted ${res.data.deleted}${res.data.skipped ? `, skipped ${res.data.skipped} (no longer eligible)` : ''}.`);
+    unconfirmed = [];
+    document.getElementById('unconfirmed-out').textContent = '';
+    e.target.style.display = 'none';
+  } catch (err) { console.error(err); toast('Could not delete.', 'err'); }
+  e.target.disabled = false;
+});
 
 /* ── ACTIVITY ── */
 function renderActivity() {

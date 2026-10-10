@@ -270,7 +270,8 @@ body {
   import { startAppCheck } from "/appcheck.js";
   import {
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-    GoogleAuthProvider, signInWithPopup, updateProfile, sendPasswordResetEmail
+    GoogleAuthProvider, signInWithPopup, updateProfile, sendPasswordResetEmail,
+    sendEmailVerification
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import {
     getFirestore, doc, setDoc, getDoc, serverTimestamp
@@ -316,10 +317,11 @@ body {
     }
   }
 
-  function showSuccess(name) {
+  function showSuccess(name, isNew) {
     const first = (name || 'there').split(' ')[0];
     document.getElementById('success-name-msg').textContent =
-      `Welcome ${first}! You're all set to start collecting stamps at Wellington's best businesses.`;
+      `Welcome ${first}! You're all set to start collecting stamps at Wellington's best businesses.`
+      + (isNew ? ' We\'ve emailed you a link to confirm your address — tap it when you get a moment.' : '');
     goTo('sc-success');
   }
 
@@ -351,7 +353,10 @@ body {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(cred.user, { displayName: name });
       await saveCustomerProfile(cred.user.uid, name, email, phone);
-      showSuccess(name);
+      // Confirms the address is real — it's how they get back in if they
+      // forget their password, and it keeps bot accounts out.
+      try { await sendEmailVerification(cred.user); } catch (e) { console.warn('verification email', e); }
+      showSuccess(name, true);
     } catch (e) {
       setLoading('btn-signup', false, '🚀 Create My Account Free');
       showToast('signup-toast', friendlyError(e.code));

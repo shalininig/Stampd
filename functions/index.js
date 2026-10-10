@@ -7,6 +7,7 @@ const admin = require("firebase-admin");
 const { sendToUser } = require("./notify");
 const billing = require("./billing");
 const lifecycle = require("./lifecycle");
+const signup = require("./signup");
 const {
   DEFAULT_INTERVAL_SECONDS,
   validPins,
@@ -641,4 +642,8 @@ Object.assign(exports, billing.build({ db, admin, REGION }));
   const { dailyTrialReminders, previewTrialReminders, sendTestReminder } = lifecycle.build({ db, admin, REGION });
   Object.assign(exports, { dailyTrialReminders, previewTrialReminders, sendTestReminder });
 }
+
+// ── Bot protection: vendor signup form, unconfirmed customer accounts ──
+// See signup.js.
+Object.assign(exports, signup.build({ db, admin, REGION }));
 

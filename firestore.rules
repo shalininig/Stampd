@@ -62,12 +62,10 @@ service cloud.firestore {
       allow get:  if true;
       allow list: if isOwner();
 
-      // Public signup form. Force status to 'pending' so nobody can
-      // self-approve, and block the claim fields at creation time.
-      allow create: if request.resource.data.status == 'pending'
-                    && request.resource.data.businessName is string
-                    && request.resource.data.email is string
-                    && !('claimedByUid' in request.resource.data);
+      // Created ONLY by the submitVendorApplication Cloud Function, which
+      // runs the bot checks (functions/signup.js). The website no longer
+      // writes here directly, so scripts can't skip the form.
+      allow create: if false;
 
       // Owner approves/rejects. The approved vendor may only stamp the
       // two claim fields and nothing else.
@@ -175,6 +173,12 @@ service cloud.firestore {
       allow read:  if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == customerId;
       allow read, write: if isOwner();
+    }
+
+    // ── RATE LIMITS ───────────────────────────────────────────
+    // Signup attempt counters (signup.js). Server only.
+    match /rateLimits/{id} {
+      allow read, write: if false;
     }
 
     // ── EMAIL LOG ─────────────────────────────────────────────

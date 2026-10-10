@@ -169,6 +169,10 @@
     <p class="section-p" style="max-width:100%;margin:0 auto 44px;text-align:center">Be one of NZ's founding businesses. Limited spots available.</p>
     <div class="form" id="signup-form">
       <div class="form-row">
+        <!-- Bot trap: invisible to people, so only a script fills it in. -->
+        <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
+          <label>Leave this empty<input type="text" id="hp-extra" name="hp_extra_field" tabindex="-1" autocomplete="new-password"></label>
+        </div>
         <div class="form-group"><label>Business Name *</label><input type="text" id="biz-name" placeholder="e.g. The Corner Café" required></div>
         <div class="form-group"><label>Your Name *</label><input type="text" id="owner-name" placeholder="e.g. Sarah Smith" required></div>
       </div>
@@ -222,6 +226,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { startAppCheck } from "/appcheck.js";
   import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM",
@@ -236,6 +241,7 @@
   const app = initializeApp(firebaseConfig);
   startAppCheck(app);
   const db = getFirestore(app);
+  const formOpenedAt = Date.now();
 
   window.handleSubmit = async function() {
     const bizName = document.getElementById('biz-name').value.trim();
@@ -259,10 +265,10 @@
     submitBtn.innerHTML = '⏳ Registering...';
 
     try {
-      // Applications live in `vendorApplications`, NOT `vendors`.
-      // `vendors/{uid}` is keyed by Auth UID and is only created once the
-      // owner approves and the vendor claims their account via claim.html.
-      await addDoc(collection(db, 'vendorApplications'), {
+      // Applications are created by the server (functions/signup.js), which
+      // runs the bot checks — the page can no longer write them directly.
+      const submit = httpsCallable(getFunctions(app, 'australia-southeast1'), 'submitVendorApplication');
+      await submit({
         businessName: bizName,
         ownerName: ownerName,
         email: email,
@@ -270,9 +276,8 @@
         businessType: bizType,
         address: address,
         suburb: suburb,
-        city: '',
-        status: 'pending',
-        registeredAt: serverTimestamp()
+        website: (document.getElementById('hp-extra') || {}).value || '',
+        elapsedMs: Date.now() - formOpenedAt
       });
 
       document.getElementById('signup-form').style.display = 'none';
@@ -281,7 +286,10 @@
 
     } catch (error) {
       console.error('Error:', error);
-      errorMsg.textContent = 'Something went wrong. Please try again.';
+      const code = String((error && error.code) || '');
+      errorMsg.textContent = (code.endsWith('invalid-argument') || code.endsWith('resource-exhausted')) && error.message
+        ? error.message
+        : 'Something went wrong. Please try again.';
       errorMsg.style.display = 'block';
       submitBtn.disabled = false;
       submitBtn.innerHTML = '🚀 Register My Business Free';
