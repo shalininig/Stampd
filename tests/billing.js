@@ -59,6 +59,23 @@ const nowS = () => Math.floor(Date.now() / 1000);
   const months = (v1.trialEndsAt.toMillis() - Date.now()) / (30.4 * 86400000);
   check("new vendor: trialing, ~6 months", v1.subscriptionStatus === "trialing" && months > 5.8 && months < 6.2, v1);
 
+  // 1b. Owner changes the trial length for new vendors.
+  store.set("config/billing", { trialMonths: 3 });
+  store.set("vendors/v7", { businessName: "Three months" });
+  await fns.onVendorCreated.run({ params: { vendorId: "v7" }, data: {} });
+  const m3 = (store.get("vendors/v7").trialEndsAt.toMillis() - Date.now()) / (30.4 * 86400000);
+  check("owner set 3 months → new vendor gets ~3", m3 > 2.8 && m3 < 3.2, store.get("vendors/v7"));
+  store.set("config/billing", { trialMonths: 0 });
+  store.set("vendors/v8", { businessName: "No trial" });
+  await fns.onVendorCreated.run({ params: { vendorId: "v8" }, data: {} });
+  check("owner set no trial → status none, no trial date", store.get("vendors/v8").subscriptionStatus === "none" && !store.get("vendors/v8").trialEndsAt, store.get("vendors/v8"));
+  store.set("config/billing", { trialMonths: 7 });
+  store.set("vendors/v6", { businessName: "Bad config" });
+  await fns.onVendorCreated.run({ params: { vendorId: "v6" }, data: {} });
+  const m6 = (store.get("vendors/v6").trialEndsAt.toMillis() - Date.now()) / (30.4 * 86400000);
+  check("odd value in config → falls back to 6 months", m6 > 5.8 && m6 < 6.2, store.get("vendors/v6"));
+  store.delete("config/billing");
+
   // 2. Existing trial isn't overwritten by onVendorCreated.
   store.set("vendors/v9", { businessName: "X", subscriptionStatus: "active", plan: "pro" });
   await fns.onVendorCreated.run({ params: { vendorId: "v9" }, data: {} });

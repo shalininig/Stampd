@@ -466,7 +466,9 @@ exports.onVendorCreated = onDocumentCreated(
     // Every vendor starts on the free trial unless one is already set.
     const snap = await db.collection("vendors").doc(vendorId).get();
     const v = snap.exists ? snap.data() : {};
-    const trial = v.trialEndsAt || v.subscriptionStatus ? {} : billing.newVendorTrial(admin);
+    const trial = v.trialEndsAt || v.subscriptionStatus
+      ? {}
+      : billing.newVendorTrial(admin, await billing.trialMonthsFor(db));
     await db.collection("vendors").doc(vendorId).set(
       {
         ...trial,

@@ -48,7 +48,23 @@ const PLANS = {
 const GST = { percentage: 15, inclusive: false, display_name: "GST", country: "NZ", tax_type: "gst", description: "NZ GST 15%" };
 const CURRENCY = "nzd";
 const PRICE_VERSION = "v1";
-const TRIAL_MONTHS = 6;
+// Free trial for NEW vendors. The owner changes it in the owner console
+// (Revenue → Free trial for new vendors), stored at config/billing.trialMonths.
+// 6 months is the launch offer; set it lower (or 0 = none) once Stampd is
+// established. Existing vendors keep whatever trial they were given, and any
+// single vendor's trial can be changed by hand in their Details panel.
+const DEFAULT_TRIAL_MONTHS = 6;
+const TRIAL_CHOICES = [0, 1, 2, 3, 6, 12];
+
+async function trialMonthsFor(db) {
+  try {
+    const snap = await db.collection("config").doc("billing").get();
+    const m = snap.exists ? Number(snap.data().trialMonths) : NaN;
+    return TRIAL_CHOICES.includes(m) ? m : DEFAULT_TRIAL_MONTHS;
+  } catch (e) {
+    return DEFAULT_TRIAL_MONTHS;
+  }
+}
 
 const ALLOWED_ORIGINS = [
   "https://stampd.co.nz",
@@ -84,11 +100,13 @@ function addMonths(date, months) {
   return d;
 }
 
-/** Defaults written onto a brand-new vendor. */
-function newVendorTrial(admin, now = new Date()) {
+/** Defaults written onto a brand-new vendor. 0 months = no trial: they
+ *  choose a plan and are billed from the start. */
+function newVendorTrial(admin, months = DEFAULT_TRIAL_MONTHS, now = new Date()) {
+  if (!months) return { subscriptionStatus: "none" };
   return {
     subscriptionStatus: "trialing",
-    trialEndsAt: admin.firestore.Timestamp.fromDate(addMonths(now, TRIAL_MONTHS)),
+    trialEndsAt: admin.firestore.Timestamp.fromDate(addMonths(now, months)),
   };
 }
 
@@ -313,6 +331,8 @@ function build({ db, admin, REGION }) {
 module.exports = {
   build,
   newVendorTrial,
+  trialMonthsFor,
+  TRIAL_CHOICES,
   // exported for tests
   _setStripeFactory,
   PLANS,

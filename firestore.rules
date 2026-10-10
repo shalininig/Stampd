@@ -177,6 +177,13 @@ service cloud.firestore {
       allow read, write: if isOwner();
     }
 
+    // ── CONFIG ────────────────────────────────────────────────
+    // Owner-only settings, e.g. config/billing.trialMonths (free trial
+    // length for new vendors). The server reads it with admin rights.
+    match /config/{docId} {
+      allow read, write: if isOwner();
+    }
+
     // Deny anything not matched above.
     match /{document=**} {
       allow read, write: if false;

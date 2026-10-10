@@ -393,7 +393,24 @@
   <!-- REVENUE -->
   <section class="page" id="page-revenue">
     <h1 class="page-title">REVENUE</h1>
-    <p class="page-sub">Subscription status per vendor. Populates once Stripe is connected.</p>
+    <p class="page-sub">Subscription status per vendor, copied from Stripe every night.</p>
+    <div class="panel" style="padding:18px 20px">
+      <strong>Free trial for new vendors</strong>
+      <p style="margin:6px 0 12px;font-size:.85rem;opacity:.7">
+        Applies to vendors who join from now on. Everyone who already joined keeps the trial they were given —
+        change a single vendor's trial in their Details panel.
+      </p>
+      <select id="trial-months" class="search" style="max-width:220px;flex:none">
+        <option value="6">6 months (launch offer)</option>
+        <option value="12">12 months</option>
+        <option value="3">3 months</option>
+        <option value="2">2 months</option>
+        <option value="1">1 month</option>
+        <option value="0">No free trial</option>
+      </select>
+      <button class="btn btn-approve" id="btn-save-trial" style="margin-left:8px">Save</button>
+      <span id="trial-saved" style="margin-left:10px;font-size:.85rem;opacity:.8"></span>
+    </div>
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-label">Paying</div><div class="stat-value" id="r-paying">0</div><div class="stat-change">Active subscriptions</div></div>
       <div class="stat-card"><div class="stat-label">Trialling</div><div class="stat-value" id="r-trial">0</div><div class="stat-change">In free trial</div></div>
@@ -423,7 +440,7 @@ import { startAppCheck } from "/appcheck.js";
 import { getAuth, signOut, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 import {
-  getFirestore, doc, getDoc, getDocs, updateDoc,
+  getFirestore, doc, getDoc, getDocs, updateDoc, setDoc,
   collection, query, where, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -600,6 +617,7 @@ async function loadAll() {
     renderRevenue();
     renderCustomers();
     renderActivity();
+    loadTrialSetting();
   } catch (e) {
     console.error(e);
     toast('Failed to load data — check Firestore rules.', 'err');
@@ -874,7 +892,7 @@ function showVendor(id) {
          Stripe customer: <code>${esc(v.stripeCustomerId || '')}</code> (paste into Stripe's search).</div>`
       : `<div class="biz-meta" style="margin-bottom:10px">Not paying through Stripe yet — you can set this by hand (e.g. a free or extended trial).</div>`}
     <select id="d-plan">
-      ${opt('', v.plan, '— none —')}${opt('starter', v.plan, 'Starter')}${opt('standard', v.plan, 'Standard')}${opt('pro', v.plan, 'Pro')}
+      ${opt('', v.plan, '— none —')}${opt('starter', v.plan, 'Starter')}${opt('standard', v.plan, 'Standard (Featured)')}${v.plan === 'pro' ? opt('pro', v.plan, 'Pro (old)') : ''}
     </select>
     <select id="d-sub">
       ${opt('', v.subscriptionStatus, 'No subscription')}${opt('trialing', v.subscriptionStatus, 'Free trial')}${opt('active', v.subscriptionStatus, 'Paying')}${opt('past_due', v.subscriptionStatus, 'Payment overdue')}${opt('canceled', v.subscriptionStatus, 'Cancelled')}
@@ -1073,6 +1091,29 @@ document.addEventListener('click', async (e) => {
     console.error(err); tEl.disabled = false;
     toast('Could not update vendor.', 'err');
   }
+});
+
+/* ── FREE TRIAL LENGTH (config/billing.trialMonths) ── */
+async function loadTrialSetting() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'billing'));
+    const m = snap.exists() ? snap.data().trialMonths : 6;
+    document.getElementById('trial-months').value = String([0, 1, 2, 3, 6, 12].includes(m) ? m : 6);
+  } catch (e) { console.warn('trial setting', e); }
+}
+document.getElementById('btn-save-trial').addEventListener('click', async (e) => {
+  const m = Number(document.getElementById('trial-months').value);
+  const label = m ? `${m} month${m === 1 ? '' : 's'}` : 'no free trial';
+  if (!confirm(`New vendors from now on will get ${label}. Existing vendors are not affected. Save?`)) return;
+  e.target.disabled = true;
+  try {
+    await setDoc(doc(db, 'config', 'billing'), { trialMonths: m, updatedAt: serverTimestamp() }, { merge: true });
+    document.getElementById('trial-saved').textContent = `Saved — new vendors get ${label}.`;
+    toast('Free trial setting saved.');
+  } catch (err) {
+    console.error(err); toast('Could not save — are the Firestore rules deployed?', 'err');
+  }
+  e.target.disabled = false;
 });
 
 /* ── REVENUE ── */
