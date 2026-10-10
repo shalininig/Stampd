@@ -32,15 +32,20 @@ const { defineSecret } = require("firebase-functions/params");
 const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
 
 // ── Plans ────────────────────────────────────────────────────
-// Prices in cents, NZD, per month. Still awaiting Vijay's final decision
-// (see Next steps: "Plan prices"). To change a price later, change it here
-// AND bump PRICE_VERSION — Stripe prices can't be edited, so a new one is
-// created; existing subscribers stay on their old price until moved.
+// Prices in cents, NZD per month, EXCLUDING GST (GST is added on top — see
+// GST below). Decided 11 Oct 2026: $29 and $49 + GST; Pro held back until it
+// has features of its own. To change a price later, change it here AND bump
+// PRICE_VERSION — Stripe prices can't be edited, so a new one is created;
+// existing subscribers stay on their old price until moved.
 const PLANS = {
   starter: { name: "Stampd Starter", amount: 2900 },
   standard: { name: "Stampd Standard", amount: 4900 },
-  pro: { name: "Stampd Pro", amount: 9900 },
 };
+
+// NZ GST, added on top of the plan price on every invoice. Stampd's GST
+// number must be entered in Stripe (Settings → Business → Tax details) for
+// the invoices to be valid tax invoices.
+const GST = { percentage: 15, inclusive: false, display_name: "GST", country: "NZ", tax_type: "gst", description: "NZ GST 15%" };
 const CURRENCY = "nzd";
 const PRICE_VERSION = "v1";
 const TRIAL_MONTHS = 6;
@@ -137,6 +142,14 @@ async function ensurePrice(stripe, plan) {
   });
 }
 
+async function ensureGstRate(stripe) {
+  const list = await stripe.taxRates.list({ active: true, limit: 100 });
+  const mine = (list.data || []).find((r) => r.metadata && r.metadata.stampd === "gst15");
+  if (mine) return mine.id;
+  const r = await stripe.taxRates.create({ ...GST, metadata: { stampd: "gst15" } });
+  return r.id;
+}
+
 async function ensureCustomer(stripe, vendorRef, vendor, uid, email) {
   if (vendor.stripeCustomerId) return vendor.stripeCustomerId;
   const c = await stripe.customers.create({
@@ -218,6 +231,7 @@ function build({ db, admin, REGION }) {
     const price = await ensurePrice(stripe, plan);
     const customer = await ensureCustomer(stripe, ref, vendor, uid, email);
     const trialEnd = trialEndFor(vendor);
+    const gst = await ensureGstRate(stripe);
     const origin = originFor(request);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -226,6 +240,7 @@ function build({ db, admin, REGION }) {
       line_items: [{ price: price.id, quantity: 1 }],
       subscription_data: {
         metadata: { vendorId: uid, plan },
+        default_tax_rates: [gst],
         ...(trialEnd ? { trial_end: trialEnd } : {}),
       },
       payment_method_collection: "always",
@@ -308,5 +323,6 @@ module.exports = {
   vendorFieldsFromSubscription,
   pickSubscription,
   ensurePrice,
+  ensureGstRate,
   syncVendor,
 };

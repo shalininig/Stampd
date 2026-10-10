@@ -16,7 +16,7 @@ const fns = require(path.join(__dirname, "../functions/index.js"));
 const { _store: store, _Timestamp: TS } = fake;
 
 // ── fake Stripe ──
-const S = { products: [], prices: [], customers: [], sessions: [], portalCfgs: [], portalSessions: [], subs: [] };
+const S = { taxRates: [], products: [], prices: [], customers: [], sessions: [], portalCfgs: [], portalSessions: [], subs: [] };
 let n = 0;
 const id = (p) => `${p}_${++n}`;
 const fakeStripe = {
@@ -24,6 +24,10 @@ const fakeStripe = {
   prices: {
     list: async ({ lookup_keys }) => ({ data: S.prices.filter((p) => lookup_keys.includes(p.lookup_key)) }),
     create: async (o) => { const x = { id: id("price"), ...o }; S.prices.push(x); return x; },
+  },
+  taxRates: {
+    list: async () => ({ data: S.taxRates }),
+    create: async (o) => { const x = { id: id("txr"), ...o }; S.taxRates.push(x); return x; },
   },
   customers: { create: async (o) => { const x = { id: id("cus"), ...o }; S.customers.push(x); return x; } },
   checkout: { sessions: { create: async (o) => { const x = { id: id("cs"), url: "https://checkout.stripe.test/" + n, ...o }; S.sessions.push(x); return x; } } },
@@ -67,9 +71,10 @@ const nowS = () => Math.floor(Date.now() / 1000);
   check("checkout keeps the trial end", sess.subscription_data.trial_end === Math.floor(v1.trialEndsAt.toMillis() / 1000), sess.subscription_data);
   check("checkout is NZD 49/month", S.prices[0].unit_amount === 4900 && S.prices[0].currency === "nzd" && S.prices[0].recurring.interval === "month", S.prices[0]);
   check("customer id saved on vendor", store.get("vendors/v1").stripeCustomerId === S.customers[0].id, store.get("vendors/v1"));
+  check("GST 15% exclusive added to the subscription", S.taxRates.length === 1 && S.taxRates[0].percentage === 15 && S.taxRates[0].inclusive === false && sess.subscription_data.default_tax_rates[0] === S.taxRates[0].id, { rates: S.taxRates, sd: sess.subscription_data });
   check("success URL back to dashboard", sess.success_url === "https://stampd.co.nz/dashboard.html?billing=success", sess.success_url);
   await fns.createCheckoutSession.run({ ...as("v1"), data: { plan: "standard" } });
-  check("price and customer reused, not duplicated", S.prices.length === 1 && S.customers.length === 1, { prices: S.prices.length, customers: S.customers.length });
+  check("price, customer and GST rate reused, not duplicated", S.prices.length === 1 && S.customers.length === 1 && S.taxRates.length === 1, { prices: S.prices.length, customers: S.customers.length });
 
   // 4. Trial ended / nearly over → charged straight away (no trial_end).
   store.set("vendors/v2", { businessName: "Cutz", trialEndsAt: days(1), subscriptionStatus: "trialing" });
@@ -79,7 +84,9 @@ const nowS = () => Math.floor(Date.now() / 1000);
   // 5. Bad plan / not a vendor.
   try { await fns.createCheckoutSession.run({ ...as("v1"), data: { plan: "gold" } }); check("bad plan rejected", false); }
   catch (e) { check("bad plan rejected", /invalid-argument/.test(e.code), e.code); }
-  try { await fns.createCheckoutSession.run({ ...as("customer9"), data: { plan: "pro" } }); check("non-vendor rejected", false); }
+  try { await fns.createCheckoutSession.run({ ...as("v1"), data: { plan: "pro" } }); check("Pro not on sale yet", false); }
+  catch (e) { check("Pro not on sale yet", /invalid-argument/.test(e.code), e.code); }
+  try { await fns.createCheckoutSession.run({ ...as("customer9"), data: { plan: "starter" } }); check("non-vendor rejected", false); }
   catch (e) { check("non-vendor rejected", /permission-denied/.test(e.code), e.code); }
 
   // 6. Sync after checkout: Stripe says trialing on standard.
@@ -96,11 +103,11 @@ const nowS = () => Math.floor(Date.now() / 1000);
   check("sync: plan standard, trialing, sub id", out.synced && v.plan === "standard" && v.subscriptionStatus === "trialing" && v.stripeSubscriptionId === "sub_1", v);
 
   // 7. Already subscribed → checkout refused, portal works.
-  try { await fns.createCheckoutSession.run({ ...as("v1"), data: { plan: "pro" } }); check("second checkout refused", false); }
+  try { await fns.createCheckoutSession.run({ ...as("v1"), data: { plan: "starter" } }); check("second checkout refused", false); }
   catch (e) { check("second checkout refused", /failed-precondition/.test(e.code), e.code); }
   out = await fns.createBillingPortalSession.run({ ...as("v1"), data: {} });
   check("portal URL returned", /^https:\/\/billing/.test(out.url), out);
-  check("portal lists all three plans", S.portalCfgs[0].features.subscription_update.products.length === 3, S.portalCfgs[0]);
+  check("portal offers the two plans", S.portalCfgs[0].features.subscription_update.products.length === 2, S.portalCfgs[0]);
   await fns.createBillingPortalSession.run({ ...as("v1"), data: {} });
   check("portal config reused", S.portalCfgs.length === 1, S.portalCfgs.length);
 
@@ -109,15 +116,15 @@ const nowS = () => Math.floor(Date.now() / 1000);
   try { await fns.createBillingPortalSession.run({ ...as("v3"), data: {} }); check("portal without plan refused", false); }
   catch (e) { check("portal without plan refused", /failed-precondition/.test(e.code), e.code); }
 
-  // 9. Nightly sync: payment failed → past_due; plan changed in portal → pro.
+  // 9. Nightly sync: payment failed → past_due; plan changed in portal → starter.
   S.subs.find((s) => s.id === "sub_1").status = "past_due";
   S.subs.find((s) => s.id === "sub_1").metadata.plan = undefined;
-  S.subs.find((s) => s.id === "sub_1").items.data[0].price.lookup_key = "stampd_pro_monthly_v1";
+  S.subs.find((s) => s.id === "sub_1").items.data[0].price.lookup_key = "stampd_starter_monthly_v1";
   // …and an untouched trial that has run out.
   store.set("vendors/v4", { businessName: "Old trial", subscriptionStatus: "trialing", trialEndsAt: days(-2) });
   await fns.dailyBillingSync.run({});
   v = store.get("vendors/v1");
-  check("nightly: past_due + plan from price = pro", v.subscriptionStatus === "past_due" && v.plan === "pro", v);
+  check("nightly: past_due + plan from price = starter", v.subscriptionStatus === "past_due" && v.plan === "starter", v);
   check("nightly: expired trial marked trial_ended", store.get("vendors/v4").subscriptionStatus === "trial_ended", store.get("vendors/v4"));
   check("nightly: live trial untouched", store.get("vendors/v2").subscriptionStatus === "trialing", store.get("vendors/v2"));
 
