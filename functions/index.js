@@ -2,7 +2,9 @@
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
+const { sendToUser } = require("./notify");
 const {
   DEFAULT_INTERVAL_SECONDS,
   validPins,
@@ -354,3 +356,56 @@ exports.ensureVendorCode = onCall({ region: REGION }, async (request) => {
   }
   return { vendorCode: want };
 });
+
+// ── Customer notifications ───────────────────────────────────
+// See notify.js. Only things the customer would want to know about their
+// own cards — never promotions.
+
+// "Your reward is ready" — the moment a card completes. If the app is open
+// the phone suppresses the banner (the celebration is already on screen),
+// but it still lands in the notification list as a record.
+exports.onRewardCreated = onDocumentCreated(
+  { region: REGION, document: "rewards/{rewardId}" },
+  async (event) => {
+    const r = event.data && event.data.data();
+    if (!r || !r.customerUid) return;
+    await sendToUser(db, admin, r.customerUid, {
+      title: "⭐ Your reward is ready",
+      body: `${r.reward || "Your reward"} at ${r.vendorName || "the shop"}. Show your Stampd card at the counter.`,
+      data: { type: "reward_ready", vendorId: r.vendorId || "" },
+    });
+  }
+);
+
+const REWARD_REMINDER_DAYS = 7;
+
+// Runs once a day at 10am NZ time.
+//  1. A reward earned 7+ days ago and still not handed over gets ONE reminder.
+//  2. Cards about to expire get a heads-up (see cardExpiryWarnings below).
+exports.dailyCustomerReminders = onSchedule(
+  { region: REGION, schedule: "every day 10:00", timeZone: "Pacific/Auckland" },
+  async () => {
+    const cutoff = Date.now() - REWARD_REMINDER_DAYS * 86400000;
+    // Single-field equality query: no composite index needed. Filtered in
+    // memory — the unredeemed set is small.
+    const snap = await db.collection("rewards").where("status", "==", "unredeemed").get();
+    let sent = 0;
+    for (const d of snap.docs) {
+      const r = d.data();
+      if (r.reminderSentAt) continue;
+      const earned = r.earnedAt && r.earnedAt.toMillis ? r.earnedAt.toMillis() : 0;
+      if (!earned || earned > cutoff) continue;
+      // Mark first, so a crash mid-run can never send the same reminder twice.
+      await d.ref.set({ reminderSentAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      const n = await sendToUser(db, admin, r.customerUid, {
+        title: "Your reward is still waiting",
+        body: `${r.reward || "Your reward"} at ${r.vendorName || "the shop"} — pop in and show your Stampd card.`,
+        data: { type: "reward_reminder", vendorId: r.vendorId || "" },
+      });
+      if (n) sent++;
+    }
+    console.log(`[dailyCustomerReminders] reward reminders sent: ${sent}`);
+    if (typeof cardExpiryWarnings === "function") await cardExpiryWarnings();
+  }
+);
+
