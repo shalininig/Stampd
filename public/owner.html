@@ -188,10 +188,55 @@
   .toast.ok  { border-color: var(--green); }
   .toast.err { border-color: var(--red); }
 
+  .pill { white-space: nowrap; }
+  .pill.warn { background: rgba(255,107,43,0.15); color: var(--ember); }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  .search {
+    flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    font-family: inherit; font-size: 0.9rem;
+  }
+  .search:focus { outline: none; border-color: var(--fire); }
+  .link-row { cursor: pointer; }
+  .reward-text { font-weight: 600; }
+  .attn-item { padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 0.88rem; display: flex; gap: 12px; align-items: center; }
+  .attn-item:last-child { border-bottom: none; }
+  .attn-item .why { color: var(--muted); font-size: 0.8rem; }
+  /* DETAILS DRAWER */
+  .drawer-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 120; display: none; }
+  .drawer-bg.show { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%);
+    background: var(--surface); border-left: 1px solid var(--border); z-index: 130;
+    overflow-y: auto; padding: 24px; transform: translateX(100%); transition: transform 0.2s;
+  }
+  .drawer.show { transform: translateX(0); }
+  .drawer h2 { font-family: 'Bebas Neue', cursive; font-size: 1.9rem; letter-spacing: 1.5px; margin-bottom: 2px; padding-right: 30px; }
+  .drawer .close { position: absolute; top: 14px; right: 18px; background: none; border: none; color: var(--muted); font-size: 1.8rem; cursor: pointer; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 8px 14px; margin: 18px 0; font-size: 0.88rem; }
+  .kv dt { color: var(--muted); font-weight: 600; }
+  .kv dd { word-break: break-word; }
+  .drawer h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 22px 0 10px; }
+  .drawer select, .drawer input[type=date] {
+    padding: 9px 12px; border-radius: 9px; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: inherit; font-size: 0.88rem; margin-right: 8px; margin-bottom: 8px;
+  }
+  .mini-table td, .mini-table th { padding: 9px 10px; font-size: 0.82rem; }
   @media (max-width: 900px) {
-    .sidebar { transform: translateX(-100%); }
-    .main { margin-left: 0; padding: 20px; }
+    /* The sidebar used to slide off-screen with no way back, so the console
+       was unusable on a phone. It becomes a scrolling tab bar instead. */
+    body { display: block; }
+    .sidebar { position: static; width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .sidebar-logo { padding: 14px 16px; }
+    .nav { display: flex; overflow-x: auto; gap: 6px; padding: 8px 12px; }
+    .nav-item { width: auto; white-space: nowrap; margin-bottom: 0; padding: 9px 12px; }
+    .sidebar-foot { padding: 8px 12px; }
+    .main { margin-left: 0; padding: 20px 16px; }
     table { display: block; overflow-x: auto; white-space: nowrap; }
+    .kv { grid-template-columns: 120px 1fr; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+    .stat-card { padding: 14px; }
+    .stat-value { font-size: 1.9rem; }
   }
 </style>
     <link rel="icon" href="/favicon.ico?v=2" sizes="any">
@@ -226,6 +271,8 @@
     <button class="nav-item active" data-page="page-overview">📊 Overview</button>
     <button class="nav-item" data-page="page-applications">📥 Applications <span class="nav-badge" id="badge-apps" style="display:none">0</span></button>
     <button class="nav-item" data-page="page-vendors">🏪 Vendors</button>
+    <button class="nav-item" data-page="page-customers">👥 Customers</button>
+    <button class="nav-item" data-page="page-activity">⚡ Activity</button>
     <button class="nav-item" data-page="page-revenue">💰 Revenue</button>
   </nav>
   <div class="sidebar-foot">
@@ -245,8 +292,13 @@
       <div class="stat-card"><div class="stat-label">Pending Applications</div><div class="stat-value" id="s-pending">—</div><div class="stat-change">Awaiting your approval</div></div>
       <div class="stat-card"><div class="stat-label">Customers</div><div class="stat-value" id="s-customers">—</div><div class="stat-change">Unique across all vendors</div></div>
       <div class="stat-card"><div class="stat-label">Stamps Issued</div><div class="stat-value" id="s-stamps">—</div><div class="stat-change">All time</div></div>
-      <div class="stat-card"><div class="stat-label">Rewards Redeemed</div><div class="stat-value" id="s-rewards">—</div><div class="stat-change">All time</div></div>
+      <div class="stat-card"><div class="stat-label">Rewards Earned</div><div class="stat-value" id="s-rewards">—</div><div class="stat-change" id="s-rewards-note">All time</div></div>
       <div class="stat-card"><div class="stat-label">Est. MRR</div><div class="stat-value" id="s-mrr">$0</div><div class="stat-change" id="s-mrr-note">Stripe not connected yet</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Needs attention</span></div>
+      <div id="attn-list"><div class="empty">Loading…</div></div>
     </div>
 
     <div class="panel">
@@ -292,9 +344,48 @@
       <span id="backfill-result" style="margin-left:12px;font-size:.85rem;opacity:.8"></span>
     </div>
     <div class="panel">
+      <div class="toolbar">
+        <input class="search" id="vendor-search" placeholder="Search by business, email or suburb…">
+        <button class="btn btn-copy" id="btn-vendors-csv">Download CSV</button>
+      </div>
       <table>
-        <thead><tr><th>Business</th><th>Email</th><th>Customers</th><th>Stamps</th><th>Status</th><th>Action</th></tr></thead>
-        <tbody id="tbl-vendors"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        <thead><tr><th>Business</th><th>Reward</th><th>Customers</th><th>Stamps</th><th>Last stamp</th><th>Plan</th><th>Status</th><th></th></tr></thead>
+        <tbody id="tbl-vendors"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CUSTOMERS -->
+  <section class="page" id="page-customers">
+    <h1 class="page-title">CUSTOMERS</h1>
+    <p class="page-sub">Everyone with at least one stamp card. Use this when a customer asks about a missing stamp or reward.</p>
+    <div class="panel">
+      <div class="toolbar">
+        <input class="search" id="customer-search" placeholder="Search by name or email…">
+      </div>
+      <table>
+        <thead><tr><th>Customer</th><th>Cards</th><th>Stamps now</th><th>Rewards waiting</th><th>Last visit</th><th></th></tr></thead>
+        <tbody id="tbl-customers"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ACTIVITY -->
+  <section class="page" id="page-activity">
+    <h1 class="page-title">ACTIVITY</h1>
+    <p class="page-sub">What's happening across Stampd right now.</p>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Rewards waiting to be handed over</span></div>
+      <table>
+        <thead><tr><th>Customer</th><th>Business</th><th>Reward</th><th>Earned</th></tr></thead>
+        <tbody id="tbl-waiting"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Latest stamps</span></div>
+      <table>
+        <thead><tr><th>Customer</th><th>Business</th><th>Card</th><th>When</th></tr></thead>
+        <tbody id="tbl-recent"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -320,6 +411,12 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="drawer-bg" id="drawer-bg"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="close" id="drawer-close" aria-label="Close">×</button>
+  <div id="drawer-body"></div>
+</aside>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { startAppCheck } from "/appcheck.js";
@@ -327,7 +424,7 @@ import { getAuth, signOut, onAuthStateChanged, signInWithEmailAndPassword } from
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 import {
   getFirestore, doc, getDoc, getDocs, updateDoc,
-  collection, query, where, serverTimestamp
+  collection, query, where, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -362,6 +459,25 @@ function fmtDate(ts) {
   if (!ts) return '—';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleDateString('en-NZ', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function ms(ts) {
+  if (!ts) return 0;
+  if (typeof ts === 'number') return ts;
+  if (ts.toMillis) return ts.toMillis();
+  const d = new Date(ts); return isNaN(d) ? 0 : d.getTime();
+}
+function ago(ts) {
+  const t = ms(ts);
+  if (!t) return '—';
+  const days = Math.floor((Date.now() - t) / 86400000);
+  if (days <= 0) {
+    const h = Math.floor((Date.now() - t) / 3600000);
+    return h <= 0 ? 'just now' : `${h}h ago`;
+  }
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days} days ago`;
+  return fmtDate(new Date(t));
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
@@ -452,14 +568,17 @@ onAuthStateChanged(auth, async (user) => {
 let applications = [];   // vendorApplications docs
 let vendors      = [];   // vendors/{uid} docs
 let cards        = [];   // stampCards docs
+let rewards      = [];   // rewards docs
 
 async function loadAll() {
   try {
-    const [appSnap, venSnap, cardSnap] = await Promise.all([
+    const [appSnap, venSnap, cardSnap, rewSnap] = await Promise.all([
       getDocs(collection(db, 'vendorApplications')),
       getDocs(collection(db, 'vendors')),
       getDocs(collection(db, 'stampCards')),
+      getDocs(collection(db, 'rewards')).catch(() => ({ docs: [] })),
     ]);
+    rewards = rewSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     applications = appSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cards        = cardSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -479,6 +598,8 @@ async function loadAll() {
     renderApplications();
     renderVendors();
     renderRevenue();
+    renderCustomers();
+    renderActivity();
   } catch (e) {
     console.error(e);
     toast('Failed to load data — check Firestore rules.', 'err');
@@ -490,13 +611,17 @@ function renderOverview() {
   const pending = applications.filter(a => (a.status || 'pending') === 'pending');
   const uniqueCustomers = new Set(cards.map(c => c.customerUid).filter(Boolean));
   const totalStamps  = cards.reduce((n, c) => n + (c.totalLifetimeStamps || c.stamps || 0), 0);
-  const totalRewards = cards.reduce((n, c) => n + (c.rewardsRedeemed || 0), 0);
+  // From the rewards collection. The old rewardsRedeemed field on cards was
+  // never written by anything, so this always read 0.
+  const totalRewards = rewards.length;
+  const handedOver   = rewards.filter(r => r.status === 'redeemed').length;
 
   document.getElementById('s-vendors').textContent   = vendors.length;
   document.getElementById('s-pending').textContent   = pending.length;
   document.getElementById('s-customers').textContent = uniqueCustomers.size;
   document.getElementById('s-stamps').textContent    = totalStamps;
   document.getElementById('s-rewards').textContent   = totalRewards;
+  document.getElementById('s-rewards-note').textContent = `${handedOver} handed over · ${totalRewards - handedOver} waiting`;
 
   const mrr = vendors.reduce((sum, v) =>
     v.subscriptionStatus === 'active' ? sum + (PLAN_PRICE[v.plan] || 0) : sum, 0);
@@ -508,18 +633,13 @@ function renderOverview() {
   else { badge.style.display = 'none'; }
 
   // Top vendors by stamps
-  const byVendor = {};
-  cards.forEach(c => {
-    if (!c.vendorId) return;
-    const b = byVendor[c.vendorId] ||= { customers: 0, stamps: 0, rewards: 0 };
-    b.customers++;
-    b.stamps  += c.totalLifetimeStamps || c.stamps || 0;
-    b.rewards += c.rewardsRedeemed || 0;
-  });
+  const byVendor = vendorStats();
   const rows = vendors
     .map(v => ({ name: v.businessName || '(unnamed)', ...(byVendor[v.id] || { customers:0, stamps:0, rewards:0 }) }))
     .sort((a, b) => b.stamps - a.stamps)
     .slice(0, 10);
+
+  renderAttention();
 
   document.getElementById('tbl-top').innerHTML = rows.length
     ? rows.map(r => `<tr>
@@ -637,48 +757,316 @@ document.getElementById('btn-backfill-codes')?.addEventListener('click', async (
 });
 
 /* ── VENDORS ── */
-function renderVendors() {
-  const byVendor = {};
+function vendorStats() {
+  const by = {};
+  vendors.forEach(v => { by[v.id] = { customers: 0, stamps: 0, rewards: 0, waiting: 0, last: 0 }; });
   cards.forEach(c => {
-    if (!c.vendorId) return;
-    const b = byVendor[c.vendorId] ||= { customers: 0, stamps: 0 };
+    const b = by[c.vendorId]; if (!b) return;
     b.customers++;
     b.stamps += c.totalLifetimeStamps || c.stamps || 0;
+    b.last = Math.max(b.last, ms(c.lastStampAt));
   });
+  rewards.forEach(r => {
+    const b = by[r.vendorId]; if (!b) return;
+    b.rewards++;
+    if (r.status !== 'redeemed') b.waiting++;
+  });
+  return by;
+}
 
-  document.getElementById('tbl-vendors').innerHTML = vendors.length
-    ? vendors.map(v => {
-        const s = byVendor[v.id] || { customers: 0, stamps: 0 };
+function vendorMatches(v, q) {
+  if (!q) return true;
+  return [v.businessName, v.email, v.suburb, v.businessType, v.vendorCode]
+    .some(x => String(x || '').toLowerCase().includes(q));
+}
+
+function renderVendors() {
+  const by = vendorStats();
+  const q = (document.getElementById('vendor-search')?.value || '').trim().toLowerCase();
+  const list = vendors.filter(v => vendorMatches(v, q))
+    .sort((a, b) => String(a.businessName || '').localeCompare(String(b.businessName || '')));
+
+  document.getElementById('tbl-vendors').innerHTML = list.length
+    ? list.map(v => {
+        const s = by[v.id] || { customers: 0, stamps: 0, last: 0 };
         const suspended = v.status === 'suspended';
-        return `<tr>
+        return `<tr class="link-row" data-vendor="${esc(v.id)}">
           <td><div class="biz-name">${esc(v.businessName || '(unnamed)')}</div>
-              <div class="biz-meta">${esc(v.businessType || '—')}</div></td>
-          <td>${esc(v.email || '—')}</td>
+              <div class="biz-meta">${esc(v.suburb || v.businessType || '—')}</div></td>
+          <td><div class="reward-text">${esc(v.reward || '—')}</div>
+              <div class="biz-meta">${v.stampGoal || 10} ${esc(v.countWord || 'stamps')}</div></td>
           <td>${s.customers}</td>
           <td>${s.stamps}</td>
+          <td>${s.last ? ago(s.last) : '—'}</td>
+          <td>${esc(v.plan || '—')}<div class="biz-meta">${esc(v.subscriptionStatus || 'none')}</div></td>
           <td><span class="pill ${suspended ? 'rejected' : 'live'}">${suspended ? 'Suspended' : 'Live'}</span></td>
-          <td><button class="btn ${suspended ? 'btn-approve' : 'btn-reject'}"
-                data-toggle="${esc(v.id)}">${suspended ? 'Reactivate' : 'Suspend'}</button></td>
+          <td><button class="btn btn-copy" data-vendor="${esc(v.id)}">Details</button></td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="6" class="empty">No live vendors yet.</td></tr>';
+    : `<tr><td colspan="8" class="empty">${q ? 'No vendors match.' : 'No live vendors yet.'}</td></tr>`;
+}
+document.getElementById('vendor-search').addEventListener('input', renderVendors);
+
+document.getElementById('btn-vendors-csv').addEventListener('click', () => {
+  const by = vendorStats();
+  const cols = ['Business', 'Email', 'Phone', 'Suburb', 'Type', 'Reward', 'Goal', 'Plan', 'Subscription', 'Status', 'Customers', 'Stamps', 'Rewards earned', 'Last stamp'];
+  const csvCell = x => `"${String(x ?? '').replace(/"/g, '""')}"`;
+  const rows = vendors.map(v => {
+    const s = by[v.id] || {};
+    return [v.businessName, v.email, v.phone, v.suburb, v.businessType, v.reward, v.stampGoal || 10,
+      v.plan, v.subscriptionStatus, v.status || 'active', s.customers || 0, s.stamps || 0, s.rewards || 0,
+      s.last ? new Date(s.last).toISOString().slice(0, 10) : ''].map(csvCell).join(',');
+  });
+  const blob = new Blob([[cols.map(csvCell).join(','), ...rows].join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `stampd-vendors-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ── DETAILS DRAWER ── */
+function openDrawer(html) {
+  document.getElementById('drawer-body').innerHTML = html;
+  document.getElementById('drawer').classList.add('show');
+  document.getElementById('drawer-bg').classList.add('show');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('show');
+  document.getElementById('drawer-bg').classList.remove('show');
+}
+document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+document.getElementById('drawer-bg').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+function showVendor(id) {
+  const v = vendors.find(x => x.id === id);
+  if (!v) return;
+  const s = vendorStats()[id] || {};
+  const vc = cards.filter(c => c.vendorId === id).sort((a, b) => ms(b.lastStampAt) - ms(a.lastStampAt));
+  const expiry = [6, 12].includes(Number(v.cardExpiryMonths)) ? `${v.cardExpiryMonths} months after last visit` : 'Never';
+  const pin = v.requirePin === false ? 'Off' : (v.pinMode === 'rotating' ? 'Rotating' : 'Fixed');
+  const trialEnd = v.trialEndsAt ? new Date(ms(v.trialEndsAt)).toISOString().slice(0, 10) : '';
+  const opt = (val, cur, label) => `<option value="${val}" ${String(cur || '') === val ? 'selected' : ''}>${label}</option>`;
+
+  openDrawer(`
+    <h2>${esc(v.businessName || '(unnamed)')}</h2>
+    <div class="biz-meta">${esc(v.businessType || '')}${v.suburb ? ' · ' + esc(v.suburb) : ''}</div>
+    <dl class="kv">
+      <dt>Email</dt><dd>${v.email ? `<a href="mailto:${esc(v.email)}" style="color:var(--gold)">${esc(v.email)}</a>` : '—'}</dd>
+      <dt>Phone</dt><dd>${esc(v.phone || '—')}</dd>
+      <dt>Address</dt><dd>${esc(v.address || '—')}</dd>
+      <dt>Vendor code</dt><dd>${esc(v.vendorCode || '—')}</dd>
+      <dt>Reward</dt><dd class="reward-text">${esc(v.reward || '—')}</dd>
+      <dt>Goal</dt><dd>${v.stampGoal || 10} ${esc(v.countWord || 'stamps')}</dd>
+      <dt>Card expiry</dt><dd>${expiry}</dd>
+      <dt>PIN</dt><dd>${pin}</dd>
+      <dt>Joined</dt><dd>${fmtDate(v.claimedAt || v.createdAt)}</dd>
+      <dt>Customers</dt><dd>${s.customers || 0}</dd>
+      <dt>Stamps (all time)</dt><dd>${s.stamps || 0}</dd>
+      <dt>Rewards</dt><dd>${s.rewards || 0} earned · ${s.waiting || 0} waiting</dd>
+      <dt>Last stamp</dt><dd>${s.last ? ago(s.last) : 'Never'}</dd>
+    </dl>
+
+    <h3>Plan (set by hand until Stripe is live)</h3>
+    <select id="d-plan">
+      ${opt('', v.plan, '— none —')}${opt('starter', v.plan, 'Starter')}${opt('standard', v.plan, 'Standard')}${opt('pro', v.plan, 'Pro')}
+    </select>
+    <select id="d-sub">
+      ${opt('', v.subscriptionStatus, 'No subscription')}${opt('trialing', v.subscriptionStatus, 'Free trial')}${opt('active', v.subscriptionStatus, 'Paying')}${opt('past_due', v.subscriptionStatus, 'Payment overdue')}${opt('canceled', v.subscriptionStatus, 'Cancelled')}
+    </select>
+    <div style="font-size:.8rem;color:var(--muted);margin:2px 0 6px">Free trial ends</div>
+    <input type="date" id="d-trial" value="${trialEnd}">
+    <div><button class="btn btn-approve" data-saveplan="${esc(id)}">Save plan</button></div>
+
+    <h3>Account</h3>
+    <button class="btn ${v.status === 'suspended' ? 'btn-approve' : 'btn-reject'}" data-toggle="${esc(id)}">
+      ${v.status === 'suspended' ? 'Reactivate' : 'Suspend'}</button>
+
+    <h3>Customers (${vc.length})</h3>
+    ${vc.length ? `<table class="mini-table"><thead><tr><th>Customer</th><th>Card</th><th>Last</th></tr></thead><tbody>
+      ${vc.slice(0, 50).map(c => `<tr>
+        <td>${esc(c.customerName || 'Customer')}<div class="biz-meta">${esc(c.customerEmail || '')}</div></td>
+        <td>${c.stamps || 0} of ${c.stampGoal || v.stampGoal || 10}</td>
+        <td>${ago(c.lastStampAt)}</td></tr>`).join('')}
+      </tbody></table>${vc.length > 50 ? '<div class="biz-meta" style="margin-top:8px">Showing the 50 most recent.</div>' : ''}`
+      : '<div class="biz-meta">No customers yet.</div>'}
+  `);
 }
 
 document.addEventListener('click', async (e) => {
-  const id = e.target.dataset?.toggle;
+  if (e.target.closest('[data-toggle]')) return;   // handled by the suspend listener
+
+  const vEl = e.target.closest('[data-vendor]');
+  if (vEl) { showVendor(vEl.dataset.vendor); return; }
+
+  const cEl = e.target.closest('[data-customer]');
+  if (cEl) { showCustomer(cEl.dataset.customer); return; }
+
+  const planBtn = e.target.closest('[data-saveplan]');
+  if (planBtn) {
+    const id = planBtn.dataset.saveplan;
+    const v = vendors.find(x => x.id === id);
+    const plan = document.getElementById('d-plan').value;
+    const subscriptionStatus = document.getElementById('d-sub').value;
+    const trial = document.getElementById('d-trial').value;
+    const patch = { plan, subscriptionStatus, updatedAt: serverTimestamp() };
+    patch.trialEndsAt = trial ? Timestamp.fromDate(new Date(trial + 'T23:59:59+12:00')) : null;
+    planBtn.disabled = true;
+    try {
+      await updateDoc(doc(db, 'vendors', id), patch);
+      Object.assign(v, { plan, subscriptionStatus, trialEndsAt: patch.trialEndsAt });
+      toast('Plan saved.');
+      renderVendors(); renderRevenue(); renderOverview();
+    } catch (err) {
+      console.error(err);
+      toast('Could not save plan.', 'err');
+    }
+    planBtn.disabled = false;
+  }
+});
+
+/* ── CUSTOMERS ── */
+function customerList() {
+  const by = {};
+  cards.forEach(c => {
+    if (!c.customerUid) return;
+    const x = by[c.customerUid] ||= { uid: c.customerUid, name: '', email: '', cards: 0, stamps: 0, waiting: 0, last: 0 };
+    x.cards++;
+    x.stamps += c.stamps || 0;
+    x.last = Math.max(x.last, ms(c.lastStampAt));
+    if (c.customerName && !x.name) x.name = c.customerName;
+    if (c.customerEmail && !x.email) x.email = c.customerEmail;
+  });
+  rewards.forEach(r => {
+    const x = by[r.customerUid]; if (!x) return;
+    if (r.status !== 'redeemed') x.waiting++;
+    if (r.customerName && !x.name) x.name = r.customerName;
+    if (r.customerEmail && !x.email) x.email = r.customerEmail;
+  });
+  return Object.values(by).sort((a, b) => b.last - a.last);
+}
+
+function renderCustomers() {
+  const q = (document.getElementById('customer-search')?.value || '').trim().toLowerCase();
+  const list = customerList().filter(c => !q || `${c.name} ${c.email} ${c.uid}`.toLowerCase().includes(q));
+  document.getElementById('tbl-customers').innerHTML = list.length
+    ? list.slice(0, 200).map(c => `<tr class="link-row" data-customer="${esc(c.uid)}">
+        <td><div class="biz-name">${esc(c.name || 'Customer')}</div><div class="biz-meta">${esc(c.email || c.uid)}</div></td>
+        <td>${c.cards}</td><td>${c.stamps}</td>
+        <td>${c.waiting ? `<span class="pill pending">${c.waiting}</span>` : '0'}</td>
+        <td>${c.last ? ago(c.last) : '—'}</td>
+        <td><button class="btn btn-copy" data-customer="${esc(c.uid)}">Details</button></td>
+      </tr>`).join('')
+    : `<tr><td colspan="6" class="empty">${q ? 'No customers match.' : 'No customers yet.'}</td></tr>`;
+}
+document.getElementById('customer-search').addEventListener('input', renderCustomers);
+
+function showCustomer(uid) {
+  const c = customerList().find(x => x.uid === uid);
+  if (!c) return;
+  const vName = id => (vendors.find(v => v.id === id) || {}).businessName || 'Business';
+  const myCards = cards.filter(x => x.customerUid === uid).sort((a, b) => ms(b.lastStampAt) - ms(a.lastStampAt));
+  const myRewards = rewards.filter(r => r.customerUid === uid).sort((a, b) => ms(b.earnedAt) - ms(a.earnedAt));
+  openDrawer(`
+    <h2>${esc(c.name || 'Customer')}</h2>
+    <div class="biz-meta">${esc(c.email || '')}</div>
+    <dl class="kv">
+      <dt>Account ID</dt><dd style="font-family:monospace;font-size:.8rem">${esc(uid)}</dd>
+      <dt>Cards</dt><dd>${c.cards}</dd>
+      <dt>Last visit</dt><dd>${c.last ? ago(c.last) : '—'}</dd>
+    </dl>
+    <h3>Cards</h3>
+    <table class="mini-table"><thead><tr><th>Business</th><th>Card</th><th>Lifetime</th><th>Last</th></tr></thead><tbody>
+      ${myCards.map(x => `<tr><td>${esc(vName(x.vendorId))}</td>
+        <td>${x.stamps || 0} of ${x.stampGoal || '?'}<div class="biz-meta">${esc(x.reward || '')}</div></td>
+        <td>${x.totalLifetimeStamps || 0}</td><td>${ago(x.lastStampAt)}</td></tr>`).join('')}
+    </tbody></table>
+    <h3>Rewards (${myRewards.length})</h3>
+    ${myRewards.length ? `<table class="mini-table"><thead><tr><th>Business</th><th>Reward</th><th>Status</th></tr></thead><tbody>
+      ${myRewards.map(r => `<tr><td>${esc(r.vendorName || vName(r.vendorId))}</td><td>${esc(r.reward || '')}<div class="biz-meta">earned ${ago(r.earnedAt)}</div></td>
+        <td><span class="pill ${r.status === 'redeemed' ? 'approved' : 'pending'}">${r.status === 'redeemed' ? 'Handed over' : 'Waiting'}</span></td></tr>`).join('')}
+    </tbody></table>` : '<div class="biz-meta">None yet.</div>'}
+  `);
+}
+
+/* ── ACTIVITY ── */
+function renderActivity() {
+  const vName = id => (vendors.find(v => v.id === id) || {}).businessName;
+  const waiting = rewards.filter(r => r.status !== 'redeemed').sort((a, b) => ms(a.earnedAt) - ms(b.earnedAt));
+  document.getElementById('tbl-waiting').innerHTML = waiting.length
+    ? waiting.slice(0, 100).map(r => {
+        const days = Math.floor((Date.now() - ms(r.earnedAt)) / 86400000);
+        return `<tr>
+          <td>${esc(r.customerName || 'Customer')}<div class="biz-meta">${esc(r.customerEmail || '')}</div></td>
+          <td>${esc(r.vendorName || vName(r.vendorId) || '—')}</td>
+          <td class="reward-text">${esc(r.reward || '')}</td>
+          <td>${days >= 14 ? `<span class="pill warn">${ago(r.earnedAt)}</span>` : ago(r.earnedAt)}</td></tr>`;
+      }).join('')
+    : '<tr><td colspan="4" class="empty">Nothing waiting.</td></tr>';
+
+  const recent = [...cards].filter(c => c.lastStampAt).sort((a, b) => ms(b.lastStampAt) - ms(a.lastStampAt)).slice(0, 30);
+  document.getElementById('tbl-recent').innerHTML = recent.length
+    ? recent.map(c => `<tr>
+        <td>${esc(c.customerName || 'Customer')}</td>
+        <td>${esc(vName(c.vendorId) || c.vendorName || '—')}</td>
+        <td>${c.stamps || 0} of ${c.stampGoal || '?'}</td>
+        <td>${ago(c.lastStampAt)}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">No stamps yet.</td></tr>';
+}
+
+/* ── NEEDS ATTENTION ── */
+function renderAttention() {
+  const items = [];
+  const now = Date.now();
+  const day = 86400000;
+
+  applications.filter(a => (a.status || 'pending') === 'pending').forEach(a =>
+    items.push({ pill: 'pending', tag: 'Application', text: a.businessName, why: `applied ${ago(a.registeredAt)} — approve or reject` }));
+
+  applications.filter(a => a.status === 'approved' && !a.claimedByUid && ms(a.approvedAt) && now - ms(a.approvedAt) > 3 * day).forEach(a =>
+    items.push({ pill: 'warn', tag: 'Not claimed', text: a.businessName, why: `approved ${ago(a.approvedAt)} but hasn't set up their login — resend the claim link` }));
+
+  const by = vendorStats();
+  vendors.filter(v => v.status !== 'suspended').forEach(v => {
+    const s = by[v.id] || {};
+    const joined = ms(v.claimedAt || v.createdAt);
+    if (!s.last && joined && now - joined > 7 * day)
+      items.push({ pill: 'warn', tag: 'No stamps yet', text: v.businessName, vendor: v.id, why: `joined ${ago(joined)} and hasn't stamped anyone — check they're set up` });
+    else if (s.last && now - s.last > 14 * day)
+      items.push({ pill: 'warn', tag: 'Gone quiet', text: v.businessName, vendor: v.id, why: `last stamp ${ago(s.last)}` });
+    if (v.subscriptionStatus === 'trialing' && v.trialEndsAt && ms(v.trialEndsAt) - now < 14 * day)
+      items.push({ pill: 'pending', tag: 'Trial ending', text: v.businessName, vendor: v.id, why: `free trial ends ${fmtDate(v.trialEndsAt)}` });
+  });
+
+  const oldRewards = rewards.filter(r => r.status !== 'redeemed' && now - ms(r.earnedAt) > 14 * day).length;
+  if (oldRewards) items.push({ pill: 'warn', tag: 'Rewards', text: `${oldRewards} reward${oldRewards === 1 ? '' : 's'} waiting 2+ weeks`, why: 'see Activity — may need a nudge to the vendor' });
+
+  document.getElementById('attn-list').innerHTML = items.length
+    ? items.map(i => `<div class="attn-item ${i.vendor ? 'link-row' : ''}" ${i.vendor ? `data-vendor="${esc(i.vendor)}"` : ''}>
+        <span class="pill ${i.pill}">${esc(i.tag)}</span>
+        <div><div class="biz-name">${esc(i.text || '(unnamed)')}</div><div class="why">${esc(i.why)}</div></div>
+      </div>`).join('')
+    : '<div class="empty">All good — nothing needs you right now.</div>';
+}
+
+document.addEventListener('click', async (e) => {
+  const tEl = e.target.closest('[data-toggle]');
+  const id = tEl && tEl.dataset.toggle;
   if (!id) return;
   const v = vendors.find(x => x.id === id);
   if (!v) return;
   const next = v.status === 'suspended' ? 'active' : 'suspended';
   if (next === 'suspended' && !confirm(`Suspend ${v.businessName}? They will not be able to issue stamps.`)) return;
-  e.target.disabled = true;
+  tEl.disabled = true;
   try {
     await updateDoc(doc(db, 'vendors', id), { status: next, updatedAt: serverTimestamp() });
     v.status = next;
     toast(next === 'suspended' ? 'Vendor suspended.' : 'Vendor reactivated.');
     renderVendors();
+    if (document.getElementById('drawer').classList.contains('show')) showVendor(id);
   } catch (err) {
-    console.error(err); e.target.disabled = false;
+    console.error(err); tEl.disabled = false;
     toast('Could not update vendor.', 'err');
   }
 });
