@@ -99,7 +99,7 @@ service cloud.firestore {
       allow update: if isOwner()
                     || (isSignedIn()
                         && request.auth.uid == uid
-                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'applicationId', 'pin', 'vendorCode']));
+                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'trialEndsAt', 'applicationId', 'pin', 'vendorCode']));
 
       allow delete: if isOwner()
                     || (isSignedIn() && request.auth.uid == uid);
