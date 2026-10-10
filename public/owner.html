@@ -868,7 +868,11 @@ function showVendor(id) {
       <dt>Last stamp</dt><dd>${s.last ? ago(s.last) : 'Never'}</dd>
     </dl>
 
-    <h3>Plan (set by hand until Stripe is live)</h3>
+    <h3>Plan</h3>
+    ${v.stripeSubscriptionId
+      ? `<div class="biz-meta" style="margin-bottom:10px">Paying through Stripe — changes here are overwritten by the nightly sync.
+         Stripe customer: <code>${esc(v.stripeCustomerId || '')}</code> (paste into Stripe's search).</div>`
+      : `<div class="biz-meta" style="margin-bottom:10px">Not paying through Stripe yet — you can set this by hand (e.g. a free or extended trial).</div>`}
     <select id="d-plan">
       ${opt('', v.plan, '— none —')}${opt('starter', v.plan, 'Starter')}${opt('standard', v.plan, 'Standard')}${opt('pro', v.plan, 'Pro')}
     </select>

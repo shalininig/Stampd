@@ -1,6 +1,6 @@
 {
   "name": "stampd-functions",
-  "description": "Cloud Functions for Stampd \u2014 server-side stamp issuing and PIN verification",
+  "description": "Cloud Functions for Stampd — server-side stamp issuing and PIN verification",
   "main": "index.js",
   "engines": {
     "node": "22"
@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "firebase-admin": "^12.6.0",
-    "firebase-functions": "^6.1.0"
+    "firebase-functions": "^6.1.0",
+    "stripe": "^17.7.0"
   },
   "private": true
 }

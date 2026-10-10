@@ -135,6 +135,22 @@
     padding: 16px;
     border-top: 1px solid var(--border);
   }
+  /* PLAN & BILLING */
+  .bill-status { border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); background: var(--surface); }
+  .bill-status.good { border-color: rgba(34,197,94,0.45); }
+  .bill-status.warn { border-color: rgba(255,184,48,0.55); }
+  .bill-status.bad  { border-color: rgba(255,48,8,0.6); }
+  .bill-status h2 { font-size: 1.15rem; margin-bottom: 6px; }
+  .bill-status p { color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+  .bill-actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .plan-card { background: var(--surface); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; }
+  .plan-card.current { border-color: var(--gold); }
+  .plan-name { font-weight: 800; font-size: 1rem; margin-bottom: 4px; }
+  .plan-price { font-size: 1.8rem; font-weight: 800; margin: 6px 0 2px; }
+  .plan-price small { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+  .plan-feat { color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin: 10px 0 16px; flex: 1; }
+  .bill-note { color: var(--muted); font-size: 0.8rem; margin-top: 14px; line-height: 1.5; }
   .plan-badge {
     background: rgba(255,184,48,0.1);
     border: 1px solid rgba(255,184,48,0.25);
@@ -739,9 +755,12 @@
       <div class="nav-item" onclick="switchPage('settings')">
         <span class="nav-icon">⚙️</span> Settings
       </div>
+      <div class="nav-item" id="nav-billing" onclick="switchPage('billing')">
+        <span class="nav-icon">🧾</span> Plan &amp; Billing
+      </div>
     </div>
     <div class="sidebar-footer">
-      <div class="plan-badge">⚡ PREMIUM PLAN</div>
+      <div class="plan-badge" id="plan-badge" onclick="switchPage('billing')" style="cursor:pointer">…</div>
       <div class="nav-item" onclick="handleLogout()" style="margin-top:12px;padding:8px 12px;color:var(--fire)">
         <span class="nav-icon">🚪</span> Logout
       </div>
@@ -930,6 +949,17 @@
           <div class="activity-list" id="full-activity-list">
             <p style="color:var(--muted)">No operational entries recorded yet.</p>
           </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-billing">
+        <div class="bill-status" id="bill-status"><p>Loading…</p></div>
+        <div id="bill-plans">
+          <div class="plan-grid" id="plan-grid"></div>
+          <p class="bill-note">
+            Payments are handled securely by Stripe — Stampd never sees your card details.
+            Change plan, update your card, download invoices or cancel any time from <strong>Manage billing</strong>.
+          </p>
         </div>
       </div>
 
@@ -1247,6 +1277,122 @@ window.loadStats = async function() {
     }
   };
 
+  // ── Plan & Billing ─────────────────────────────────────────
+  // Billing lives on the website only (never in the phone apps — store rules).
+  // Prices must match PLANS in functions/billing.js.
+  const PLAN_INFO = {
+    starter:  { name: 'Starter',  price: 29, feats: ['Digital stamp cards and rewards', 'Customer list', 'Fixed staff PIN'] },
+    standard: { name: 'Standard', price: 49, feats: ['Everything in Starter', 'Rotating staff PIN — changes on a timer, so it can\'t be shared'] },
+    pro:      { name: 'Pro',      price: 99, feats: ['Everything in Standard'] },
+  };
+  const fmtDay = (ts) => {
+    const d = ts && ts.toDate ? ts.toDate() : null;
+    return d ? d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  };
+  const daysLeft = (ts) => ts && ts.toMillis ? Math.ceil((ts.toMillis() - Date.now()) / 86400000) : null;
+  const callFn = (name) => httpsCallable(getFunctions(app, 'australia-southeast1'), name);
+
+  window.renderBilling = function(v) {
+    v = v || {};
+    const st = v.subscriptionStatus || '';
+    const hasSub = !!v.stripeSubscriptionId && ['trialing', 'active', 'past_due', 'unpaid', 'paused'].includes(st);
+    const info = PLAN_INFO[v.plan] || null;
+    const trialEnd = fmtDay(v.trialEndsAt);
+    const left = daysLeft(v.trialEndsAt);
+    const manageBtn = v.stripeCustomerId
+      ? '<button class="send-btn" onclick="manageBilling(this)">Manage billing</button>' : '';
+    let cls = 'good', title = '', body = '';
+
+    if (hasSub && st === 'trialing') {
+      title = `${info ? info.name : 'Your'} plan — free trial`;
+      body = `Your free trial runs until <strong>${trialEnd}</strong>. Your first payment of NZ$${info ? info.price : ''} is taken then — nothing before.`;
+    } else if (hasSub && st === 'active' && v.cancelAtPeriodEnd) {
+      cls = 'warn'; title = `${info ? info.name : 'Your'} plan — cancelled`;
+      body = `You've cancelled. Everything keeps working until <strong>${fmtDay(v.currentPeriodEnd)}</strong>. Changed your mind? Use Manage billing to undo it.`;
+    } else if (hasSub && st === 'active') {
+      title = `${info ? info.name : 'Your'} plan — NZ$${info ? info.price : ''} a month`;
+      body = v.currentPeriodEnd ? `Next payment on <strong>${fmtDay(v.currentPeriodEnd)}</strong>.` : 'You\'re all set.';
+    } else if (hasSub) {
+      cls = 'bad'; title = 'Payment didn\'t go through';
+      body = 'We couldn\'t take your last payment. Please update your card in Manage billing so nothing stops working.';
+    } else if (st === 'trialing' && left !== null && left > 0) {
+      cls = left <= 14 ? 'warn' : 'good';
+      title = `Free trial — ${left} day${left === 1 ? '' : 's'} left`;
+      body = `Your free trial ends on <strong>${trialEnd}</strong>. Choose a plan below any time — you won't be charged until the trial ends.`;
+    } else if (st === 'trial_ended' || (st === 'trialing' && left !== null && left <= 0)) {
+      cls = 'bad'; title = 'Your free trial has ended';
+      body = 'Choose a plan below to carry on. Your customers\' cards and stamps are safe.';
+    } else if (st === 'canceled') {
+      cls = 'warn'; title = 'Your plan has ended';
+      body = 'Choose a plan below to start again. Your customers\' cards and stamps are safe.';
+    } else {
+      cls = 'warn'; title = 'Choose a plan';
+      body = 'Pick the plan that suits your business.';
+    }
+
+    document.getElementById('bill-status').className = 'bill-status ' + cls;
+    document.getElementById('bill-status').innerHTML =
+      `<h2>${title}</h2><p>${body}</p>${manageBtn ? `<div class="bill-actions">${manageBtn}</div>` : ''}`;
+
+    // Plan cards only when there's no live subscription — after that,
+    // switching plans happens in Stripe's portal (Manage billing).
+    document.getElementById('bill-plans').style.display = hasSub ? 'none' : 'block';
+    document.getElementById('plan-grid').innerHTML = Object.entries(PLAN_INFO).map(([id, p]) => `
+      <div class="plan-card">
+        <div class="plan-name">${p.name}</div>
+        <div class="plan-price">NZ$${p.price}<small> / month</small></div>
+        <div class="plan-feat">${p.feats.map(f => '✓ ' + f).join('<br>')}</div>
+        <button class="send-btn" onclick="choosePlan('${id}', this)">Choose ${p.name}</button>
+      </div>`).join('');
+
+    const badge = document.getElementById('plan-badge');
+    if (badge) {
+      badge.textContent = hasSub && info ? `⚡ ${info.name.toUpperCase()} PLAN`
+        : st === 'trialing' && left > 0 ? `⏳ FREE TRIAL · ${left} DAYS`
+        : '⚠️ CHOOSE A PLAN';
+    }
+  };
+
+  window.choosePlan = async function(plan, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening secure checkout…'; }
+    try {
+      const res = await callFn('createCheckoutSession')({ plan });
+      window.location.href = res.data.url;
+    } catch (e) {
+      console.error(e);
+      alert(e && e.message && e.code !== 'functions/internal' ? e.message : 'Could not open checkout. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Choose ' + (PLAN_INFO[plan] || {}).name; }
+    }
+  };
+
+  window.manageBilling = async function(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+    try {
+      const res = await callFn('createBillingPortalSession')({});
+      window.location.href = res.data.url;
+    } catch (e) {
+      console.error(e);
+      alert('Could not open billing. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Manage billing'; }
+    }
+  };
+
+  // Coming back from Stripe: pull the new status straight away.
+  async function afterStripeReturn() {
+    const flag = new URLSearchParams(location.search).get('billing');
+    if (!flag) return;
+    history.replaceState(null, '', location.pathname);
+    switchPage('billing');
+    document.getElementById('nav-billing')?.classList.add('active');
+    if (flag === 'cancel') return;
+    try {
+      await callFn('syncMyBilling')({});
+      const snap = await getDoc(doc(db, 'vendors', vendorUid));
+      if (snap.exists()) { vendorData = snap.data(); renderBilling(vendorData); }
+    } catch (e) { console.error('billing sync failed', e); }
+    if (flag === 'success') alert('✅ Thanks — your plan is set up.');
+  }
+
   // Logout
   window.handleLogout = async function() {
     await signOut(auth);
@@ -1270,7 +1416,9 @@ window.loadStats = async function() {
         vendorData = { businessName: sessionName || 'Your Business', businessType: 'Other' };
       }
       populateVendorInfo(vendorData);
+      renderBilling(vendorData);
       loadStats();
+      afterStripeReturn();
     } catch(e) {
       console.error('Dashboard load error:', e);
       vendorData = { businessName: sessionName || 'Your Business', businessType: 'Other' };

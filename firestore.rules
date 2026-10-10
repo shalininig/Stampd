@@ -92,14 +92,18 @@ service cloud.firestore {
       allow create: if isSignedIn()
                     && request.auth.uid == uid
                     && request.resource.data.applicationId is string
-                    && claimIsValid(request.resource.data.applicationId);
+                    && claimIsValid(request.resource.data.applicationId)
+                    // Billing fields are set by the server only — never at sign-up.
+                    // claim.html writes status 'active' — that, and nothing else.
+                    && (!('status' in request.resource.data) || request.resource.data.status == 'active')
+                    && !request.resource.data.keys().hasAny(['plan', 'subscriptionStatus', 'trialEndsAt', 'stripeCustomerId', 'stripeSubscriptionId', 'currentPeriodEnd', 'cancelAtPeriodEnd', 'subscriptionSince', 'pin', 'vendorCode']);
 
       // A vendor may edit their own record, but may not promote
       // themselves out of a suspension — only the owner can set status.
       allow update: if isOwner()
                     || (isSignedIn()
                         && request.auth.uid == uid
-                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'trialEndsAt', 'applicationId', 'pin', 'vendorCode']));
+                        && !changedKeys().hasAny(['status', 'plan', 'subscriptionStatus', 'trialEndsAt', 'stripeCustomerId', 'stripeSubscriptionId', 'currentPeriodEnd', 'cancelAtPeriodEnd', 'subscriptionSince', 'applicationId', 'pin', 'vendorCode']));
 
       allow delete: if isOwner()
                     || (isSignedIn() && request.auth.uid == uid);

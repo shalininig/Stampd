@@ -10,6 +10,7 @@ class Timestamp {
   toDate() { return new Date(this._ms); }
   toMillis() { return this._ms; }
   static fromMillis(ms) { return new Timestamp(ms); }
+  static fromDate(d) { return new Timestamp(d.getTime()); }
 }
 
 const OP = (op, args) => ({ __op: op, args });

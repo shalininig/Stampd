@@ -5,6 +5,7 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const { sendToUser } = require("./notify");
+const billing = require("./billing");
 const {
   DEFAULT_INTERVAL_SECONDS,
   validPins,
@@ -462,8 +463,13 @@ exports.onVendorCreated = onDocumentCreated(
   async (event) => {
     const vendorId = event.params.vendorId;
     await ensureSecret(vendorId);
+    // Every vendor starts on the free trial unless one is already set.
+    const snap = await db.collection("vendors").doc(vendorId).get();
+    const v = snap.exists ? snap.data() : {};
+    const trial = v.trialEndsAt || v.subscriptionStatus ? {} : billing.newVendorTrial(admin);
     await db.collection("vendors").doc(vendorId).set(
       {
+        ...trial,
         vendorCode: vendorCodeFor(vendorId),
         requirePin: true,
         pinMode: "static",
@@ -613,4 +619,8 @@ async function cardExpiryWarnings() {
   }
   console.log(`[cardExpiryWarnings] sent: ${sent}`);
 }
+
+// ── Vendor subscriptions (Stripe) ─────────────────────────────
+// See billing.js.
+Object.assign(exports, billing.build({ db, admin, REGION }));
 
