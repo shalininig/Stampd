@@ -42,6 +42,22 @@ const ZEPTOMAIL_TOKEN = defineSecret("ZEPTOMAIL_TOKEN");
 const ZEPTO_URL = "https://cpaas.zoho.com.au/v1.1/email";
 const FROM = { address: "noreply@stampd.co.nz", name: "Stampd" };
 const REPLY_TO = { address: "support@stampd.co.nz", name: "Stampd Support" };
+const SUPPORT_EMAIL = "support@stampd.co.nz";
+// Sign-off on every vendor email — who we are and how to reach us.
+const SIGNATURE_TEXT = [
+  "— The Stampd team",
+  "Stampd · Digital stamp cards for NZ businesses",
+  "Email: support@stampd.co.nz",
+  "Web: https://stampd.co.nz",
+].join("\n");
+const SIGNATURE_HTML =
+  '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:22px;border-top:1px solid #e5e5e5;padding-top:14px;font-family:Arial,sans-serif">' +
+  '<tr><td style="font-size:15px;color:#222;padding-bottom:4px"><strong>The Stampd team</strong></td></tr>' +
+  '<tr><td style="font-size:13px;color:#666;padding-bottom:8px">Digital stamp cards for NZ businesses</td></tr>' +
+  '<tr><td style="font-size:13px;line-height:1.7;color:#444">' +
+  'Email: <a href="mailto:support@stampd.co.nz" style="color:#FF3008;text-decoration:none">support@stampd.co.nz</a><br>' +
+  'Web: <a href="https://stampd.co.nz" style="color:#FF3008;text-decoration:none">stampd.co.nz</a>' +
+  '</td></tr></table>';
 const DASHBOARD = "https://stampd.co.nz/dashboard.html";
 
 const DAY = 86400000;
@@ -188,11 +204,11 @@ function emailFor(kind, v) {
     },
   }[kind];
   if (!L) return null;
-  const paras = L.body.filter(Boolean).concat(["Any questions, just reply to this email.", "— The Stampd team"]);
+  const paras = L.body.filter(Boolean).concat([`Questions? Just reply to this email, or write to us at ${SUPPORT_EMAIL}.`]);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const html = paras.map((p) => `<p style="margin:0 0 14px;font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222">${esc(p).replace(
-    /(https:\/\/[^\s)]+)/g, '<a href="$1" style="color:#FF3008">$1</a>')}</p>`).join("");
-  return { subject: L.subject, text: paras.join("\n\n"), html };
+    /(https:\/\/[^\s)]+)/g, '<a href="$1" style="color:#FF3008">$1</a>')}</p>`).join("") + SIGNATURE_HTML;
+  return { subject: L.subject, text: paras.join("\n\n") + "\n\n" + SIGNATURE_TEXT, html };
 }
 
 // ── Sending ──────────────────────────────────────────────────
