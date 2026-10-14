@@ -49,6 +49,7 @@ const SIGNATURE_TEXT = [
   "Stampd · Digital stamp cards for NZ businesses",
   "Email: support@stampd.co.nz",
   "Web: https://stampd.co.nz",
+  "Get the app: App Store https://apps.apple.com/nz/app/id6775366390 | Google Play https://play.google.com/store/apps/details?id=nz.co.stampd.app",
 ].join("\n");
 const SIGNATURE_HTML =
   '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:22px;border-top:1px solid #e5e5e5;padding-top:14px;font-family:Arial,sans-serif">' +
@@ -56,7 +57,9 @@ const SIGNATURE_HTML =
   '<tr><td style="font-size:13px;color:#666;padding-bottom:8px">Digital stamp cards for NZ businesses</td></tr>' +
   '<tr><td style="font-size:13px;line-height:1.7;color:#444">' +
   'Email: <a href="mailto:support@stampd.co.nz" style="color:#FF3008;text-decoration:none">support@stampd.co.nz</a><br>' +
-  'Web: <a href="https://stampd.co.nz" style="color:#FF3008;text-decoration:none">stampd.co.nz</a>' +
+  'Web: <a href="https://stampd.co.nz" style="color:#FF3008;text-decoration:none">stampd.co.nz</a><br>' +
+  'Get the app: <a href="https://apps.apple.com/nz/app/id6775366390" style="color:#FF3008;text-decoration:none">App Store</a> &nbsp;|&nbsp; ' +
+  '<a href="https://play.google.com/store/apps/details?id=nz.co.stampd.app" style="color:#FF3008;text-decoration:none">Google Play</a>' +
   '</td></tr></table>';
 const DASHBOARD = "https://stampd.co.nz/dashboard.html";
 
