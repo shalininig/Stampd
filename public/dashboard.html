@@ -1249,11 +1249,13 @@ window.loadStats = async function() {
       // attempt to set `pin` on a vendor document.
       await updateDoc(doc(db, 'vendors', vendorUid), {
         businessName: name, address, suburb, phone, ...(businessType ? { businessType } : {}),
-        staffPin: deleteField(), pin: deleteField(),
+        // Don't touch pin/staffPin here: the rules refuse ANY change to them,
+        // including deleting an old leftover, so this made every save fail
+        // with "Error processing updates" (testing, 15 Oct).
         updatedAt: serverTimestamp()
       });
       alert('✅ Saved.');
-    } catch(e) { alert('Error processing updates.'); }
+    } catch(e) { console.error(e); alert('Could not save. Please try again.'); }
   };
 
   // Minimum time between stamps for one customer (enforced by issueStamp).
