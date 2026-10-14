@@ -814,16 +814,10 @@
           <div class="card">
             <div class="card-header">
               <div class="card-title">Visits This Week</div>
-              <div class="card-action">View All →</div>
             </div>
-            <div class="bar-chart">
-              <div class="bar-col"><div class="bar" style="height:40%" title="Mon"></div><div class="bar-label">Mon</div></div>
-              <div class="bar-col"><div class="bar" style="height:65%" title="Tue"></div><div class="bar-label">Tue</div></div>
-              <div class="bar-col"><div class="bar" style="height:50%" title="Wed"></div><div class="bar-label">Wed</div></div>
-              <div class="bar-col"><div class="bar active" style="height:90%" title="Thu"></div><div class="bar-label">Thu</div></div>
-              <div class="bar-col"><div class="bar" style="height:75%" title="Fri"></div><div class="bar-label">Fri</div></div>
-              <div class="bar-col"><div class="bar" style="height:55%" title="Sat"></div><div class="bar-label">Sat</div></div>
-              <div class="bar-col"><div class="bar" style="height:25%" title="Sun"></div><div class="bar-label">Sun</div></div>
+            <!-- Filled from real stamp cards by loadStats(). No made-up numbers (testing, 15 Oct). -->
+            <div class="bar-chart" id="visits-chart"></div>
+            <div id="visits-chart-note" style="font-size:.78rem;color:var(--muted);margin-top:8px">Customers by the day of their latest visit, past 7 days.</div>
             </div>
           </div>
 
@@ -855,24 +849,7 @@
               <div class="card-title">🏆 Top Customers</div>
             </div>
             <div id="top-customers-list">
-              <div class="customer-row">
-                <div class="customer-rank top">1</div>
-                <div class="customer-avatar">👩</div>
-                <div class="customer-name">Sarah Mitchell</div>
-                <div class="customer-visits">24 visits</div>
-              </div>
-              <div class="customer-row">
-                <div class="customer-rank top">2</div>
-                <div class="customer-avatar">👨</div>
-                <div class="customer-name">Tom Robertson</div>
-                <div class="customer-visits">19 visits</div>
-              </div>
-              <div class="customer-row">
-                <div class="customer-rank top">3</div>
-                <div class="customer-avatar">🧑</div>
-                <div class="customer-name">Jamie Chen</div>
-                <div class="customer-visits">17 visits</div>
-              </div>
+              <p style="font-size:0.88rem;color:var(--muted);padding:10px 0;">No customers yet. They'll appear here after their first stamp.</p>
             </div>
           </div>
         </div>
@@ -1149,6 +1126,30 @@
     loadStaffPin(data);
   };
 
+  // Real numbers only — these used to be placeholders (fake names, fixed bars).
+  const escHtml = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function renderVisitsChart(days) {
+    const el = document.getElementById('visits-chart');
+    if (!el) return;
+    const max = Math.max(1, ...days.map(d => d.count));
+    const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    el.innerHTML = days.map((d, i) => {
+      const h = d.count ? Math.max(8, Math.round(d.count / max * 100)) : 3;
+      const today = i === days.length - 1;
+      return `<div class="bar-col"><div class="bar${today ? ' active' : ''}" style="height:${h}%" title="${d.count} on ${names[d.start.getDay()]}"></div><div class="bar-label">${today ? 'Today' : names[d.start.getDay()]}</div></div>`;
+    }).join('');
+  }
+  function renderTopCustomers(people) {
+    const el = document.getElementById('top-customers-list');
+    if (!el) return;
+    const top = people.filter(p => p.visits > 0).sort((a, b) => b.visits - a.visits).slice(0, 3);
+    if (!top.length) {
+      el.innerHTML = `<p style="font-size:0.88rem;color:var(--muted);padding:10px 0;">No customers yet. They'll appear here after their first stamp.</p>`;
+      return;
+    }
+    el.innerHTML = top.map((p, i) => `<div class="customer-row"><div class="customer-rank top">${i + 1}</div><div class="customer-avatar">${escHtml((p.name[0] || '?').toUpperCase())}</div><div class="customer-name">${escHtml(p.name)}</div><div class="customer-visits">${p.visits} visit${p.visits === 1 ? '' : 's'}</div></div>`).join('');
+  }
+
   // Live Stats counting
 window.loadStats = async function() {
   if (!vendorUid) return;
@@ -1157,6 +1158,9 @@ window.loadStats = async function() {
     let totalCustomers = 0, visitedToday = 0, activeThisWeek = 0, rewardsIssued = 0;
     const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    const days = [];
+    for (let i = 6; i >= 0; i--) { const d0 = new Date(startOfToday); d0.setDate(d0.getDate() - i); days.push({ start: d0, count: 0 }); }
+    const people = [];
     snap.forEach(d => {
       const data = d.data();
       totalCustomers++;
@@ -1164,8 +1168,12 @@ window.loadStats = async function() {
       if (last) {
         if (last >= startOfToday) visitedToday++;
         if (last >= weekAgo) activeThisWeek++;
+        for (let i = days.length - 1; i >= 0; i--) { if (last >= days[i].start) { days[i].count++; break; } }
       }
+      people.push({ name: data.customerName || 'Customer', visits: data.totalLifetimeStamps || data.stamps || 0 });
     });
+    renderVisitsChart(days);
+    renderTopCustomers(people);
     // Real rewards, not lifetime stamps divided by today's goal.
     try {
       const r = await getDocs(query(collection(db, 'rewards'), where('vendorId', '==', vendorUid)));

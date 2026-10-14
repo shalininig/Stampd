@@ -898,6 +898,7 @@ document.getElementById('drawer-bg').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
 async function loadVendorEmails(id) {
+  if (window.trialWords) trialWords();
   const el = document.getElementById('d-emails');
   if (!el) return;
   try {
@@ -950,7 +951,12 @@ function showVendor(id) {
       ${opt('', v.subscriptionStatus, 'No subscription')}${opt('trialing', v.subscriptionStatus, 'Free trial')}${opt('active', v.subscriptionStatus, 'Paying')}${opt('past_due', v.subscriptionStatus, 'Payment overdue')}${opt('canceled', v.subscriptionStatus, 'Cancelled')}
     </select>
     <div style="font-size:.8rem;color:var(--muted);margin:2px 0 6px">Free trial ends</div>
-    <input type="date" id="d-trial" value="${trialEnd}">
+    <input type="date" id="d-trial" value="${trialEnd}" oninput="trialWords()">
+    <div style="margin:4px 0 8px">
+      <button class="btn btn-copy" type="button" onclick="trialPlus(6)">6 months from today</button>
+      <button class="btn btn-copy" type="button" onclick="trialPlus(12)">12 months from today</button>
+    </div>
+    <div id="d-trial-words" style="font-size:.85rem;margin:0 0 8px"></div>
     <div><button class="btn btn-approve" data-saveplan="${esc(id)}">Save plan</button></div>
 
     ${v.paused ? '<div class="pill rejected" style="margin:10px 0">Stamping paused — no plan</div>'
@@ -1072,6 +1078,28 @@ function showCustomer(uid) {
     </tbody></table>` : '<div class="biz-meta">None yet.</div>'}
   `);
 }
+
+/* ── Trial date in words ──
+ * The date box shows the browser's order (10/11/2026 = 11 October on a US-set
+ * Mac), which caused a trial to end a month early in testing (15 Oct). Show the
+ * date in words beside it, warn if it's already past, and offer quick buttons. */
+window.trialWords = function () {
+  const inp = document.getElementById('d-trial'), out = document.getElementById('d-trial-words');
+  if (!inp || !out) return;
+  if (!inp.value) { out.textContent = 'No end date set.'; out.style.color = 'var(--muted)'; return; }
+  const d = new Date(inp.value + 'T12:00:00');
+  const words = d.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const past = d.getTime() < Date.now() - 86400000;
+  out.textContent = past ? `⚠️ ${words} — that's already passed. Saving this ends the trial.` : `Trial ends ${words}.`;
+  out.style.color = past ? '#ff8a6a' : 'var(--muted)';
+};
+window.trialPlus = function (months) {
+  const inp = document.getElementById('d-trial');
+  const d = new Date(); d.setMonth(d.getMonth() + months);
+  inp.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const sub = document.getElementById('d-sub'); if (sub && !sub.value) sub.value = 'trialing';
+  trialWords();
+};
 
 /* ── UNCONFIRMED ACCOUNTS (signup.js) ── */
 let unconfirmed = [];
