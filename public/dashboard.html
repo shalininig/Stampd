@@ -1020,7 +1020,8 @@
       <p id="qr-modal-code" style="margin:0 0 6px;font-size:1.6rem;font-weight:800;letter-spacing:6px">—</p>
       <p style="margin:0 0 14px;font-size:.78rem;opacity:.6">Customers can type this in the app if their camera won't scan.</p>
 
-      <button class="close-modal-btn" onclick="closeModal()">Dismiss View</button>
+      <button class="close-modal-btn" onclick="printCounterQR()" style="background:#FF3008;color:#fff;border-color:#FF3008;margin-bottom:8px">🖨️ Print for the counter</button>
+      <button class="close-modal-btn" onclick="closeModal()">Close</button>
     </div>
   </div>
 
@@ -1119,6 +1120,26 @@
       });
     };
     window.renderCounterQR();
+    // A printable A4 sign for the counter: big QR, business name, code.
+    window.printCounterQR = async function () {
+      if (!window.QRCode || !window.vendorUid) { alert('Your QR code is still loading. Please try again in a moment.'); return; }
+      const img = await QRCode.toDataURL(window.vendorUid, { width: 900, margin: 2 });
+      const biz = (document.getElementById('settings-name')?.value || '').trim() || 'Our business';
+      const code = (document.getElementById('qr-modal-code')?.textContent || '').trim();
+      const e = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const w = window.open('', '_blank');
+      if (!w) { alert('Please allow pop-ups for stampd.co.nz to print.'); return; }
+      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${e(biz)} — Stampd QR</title>
+<style>@page{size:A4;margin:16mm}body{font-family:Arial,Helvetica,sans-serif;text-align:center;color:#111;margin:0}
+h1{font-size:34px;margin:10px 0 4px}.sub{font-size:20px;margin:0 0 18px;color:#333}img{width:120mm;height:120mm}
+.code{font-size:26px;letter-spacing:8px;font-weight:bold;margin:10px 0 4px}.small{font-size:14px;color:#555;margin:0}
+.brand{margin-top:22px;font-size:22px;font-weight:bold;letter-spacing:5px;color:#FF3008}</style></head><body>
+<h1>${e(biz)}</h1><p class="sub">Collect a stamp with the free <strong>Stampd</strong> app — scan me!</p>
+<img src="${img}" alt="QR code"><p class="small">Camera won't scan? In the app tap <strong>Enter PIN with Vendor</strong> and type:</p>
+<p class="code">${e(code)}</p><p class="brand">STAMPD</p><p class="small">stampd.co.nz · App Store · Google Play</p>
+<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>`);
+      w.document.close();
+    };
     // Load Settings
     const nameInput = document.getElementById('settings-name');
     if (nameInput) nameInput.value = name;
