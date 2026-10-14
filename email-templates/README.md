@@ -1,5 +1,7 @@
 # Stampd account emails (Firebase templates)
 
+> **Superseded 15 Oct 2026.** Firebase refused the edit ("Email template updates are currently unavailable for this project"). Stampd now sends these emails itself: see `functions/accountEmails.js`. These files are kept for reference only.
+
 Branded versions of the two emails Firebase sends for us. Added 15 Oct 2026 after testing showed the defaults looked bland and came from "noreply".
 
 | File | Firebase template | Subject |
