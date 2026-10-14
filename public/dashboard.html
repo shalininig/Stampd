@@ -912,9 +912,9 @@
             <div class="card">
               <div class="card-header"><div class="card-title">🖨️ Counter Setup</div></div>
               <p style="font-size:0.85rem;color:var(--muted);font-weight:600;margin-bottom:16px;line-height:1.6">
-                Display this code at checkouts. Users scan via mobile to claim structural stamps.
+                Put this at your counter. Customers scan it with the Stampd app to collect a stamp. If their camera won't scan, they can type your business code instead.
               </p>
-              <button class="send-btn" onclick="openModal()">🖨️ View Live QR Artifact</button>
+              <button class="send-btn" onclick="openModal()">🖨️ Show my QR code</button>
             </div>
           </div>
         </div>
@@ -944,22 +944,21 @@
         <div class="settings-grid">
           <div class="card">
             <div class="settings-section">
-              <h3>🏢 Corporate Identity</h3>
+              <h3>🏢 Business details</h3>
               <div class="form-group">
-                <label class="form-label">Trading Name</label>
+                <label class="form-label">Business name</label>
                 <input class="form-input" type="text" id="settings-name" value="Loading…">
               </div>
               <div class="form-group">
-                <label class="form-label">Industry Classification</label>
-                <select class="form-select">
-                  <option selected>Café / Coffee Shop</option>
-                  <option>Restaurant</option>
-                  <option>Retail Store</option>
-                  <option>Bar / Pub</option>
+                <label class="form-label">Type of business</label>
+                <select class="form-select" id="settings-type">
+                  <option>Café / Coffee Shop</option><option>Restaurant</option><option>Bar / Pub</option>
+                  <option>Retail Store</option><option>Hair &amp; Beauty Salon</option><option>Gym / Fitness Studio</option>
+                  <option>Bakery</option><option>Food Truck</option><option>Other</option>
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label">Physical Address</label>
+                <label class="form-label">Address</label>
                 <input class="form-input" type="text" id="settings-address" value="Loading…">
               </div>
               <div class="form-group">
@@ -968,7 +967,7 @@
                 <small style="display:block;margin-top:6px;opacity:0.6;">Customers find you by suburb. Suburb only — no city or postcode.</small>
               </div>
               <div class="form-group">
-                <label class="form-label">Contact Line</label>
+                <label class="form-label">Phone</label>
                 <input class="form-input" type="text" id="settings-phone" value="Loading…">
               </div>
               <div class="form-group">
@@ -984,28 +983,10 @@
           <div>
             <div class="card">
               <div class="settings-section">
-                <h3>🔔 Alert Configurations</h3>
-                <div class="toggle-row">
-                  <div class="toggle-info">
-                    <div class="toggle-name">Registration Alerts</div>
-                    <div class="toggle-desc">Ping on new regular creation</div>
-                  </div>
-                  <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-                </div>
-                <div class="toggle-row">
-                  <div class="toggle-info">
-                    <div class="toggle-name">Redemption Audits</div>
-                    <div class="toggle-desc">Ping when claims are filled</div>
-                  </div>
-                  <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-                </div>
-                <div class="toggle-row">
-                  <div class="toggle-info">
-                    <div class="toggle-name">Weekly Digests</div>
-                    <div class="toggle-desc">Monday status reporting deliveries</div>
-                  </div>
-                  <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-                </div>
+                <h3>🔢 Your business code</h3>
+                <!-- Replaces three alert switches that didn't do anything (testing, 15 Oct). -->
+                <p id="settings-code" style="font-size:1.8rem;font-weight:800;letter-spacing:6px;margin:6px 0 10px">—</p>
+                <p style="font-size:.85rem;color:var(--muted);line-height:1.6">Customers can type this into the Stampd app (Scan → <strong>Enter PIN with Vendor</strong>) if their camera won't scan your QR code. Then staff enter the PIN on their phone.</p>
               </div>
             </div>
           </div>
@@ -1018,10 +999,13 @@
   <div class="modal-overlay" id="qr-modal" onclick="closeModal()">
     <div class="modal" onclick="event.stopPropagation()">
       <h2>YOUR COUNTER CODE</h2>
-      <p id="qr-modal-biz">Loading Vendor Context...</p>
+      <p id="qr-modal-biz">Loading…</p>
       
       <div class="qr-placeholder" style="padding:12px">
 <canvas id="qr-target"></canvas>      </div>
+      <p style="margin:12px 0 2px;font-size:.8rem;opacity:.7">Business code</p>
+      <p id="qr-modal-code" style="margin:0 0 6px;font-size:1.6rem;font-weight:800;letter-spacing:6px">—</p>
+      <p style="margin:0 0 14px;font-size:.78rem;opacity:.6">Customers can type this in the app if their camera won't scan.</p>
 
       <button class="close-modal-btn" onclick="closeModal()">Dismiss View</button>
     </div>
@@ -1101,6 +1085,12 @@
     }
 
     document.getElementById('qr-modal-biz').textContent = name + ' · stampd.co.nz';
+    ['qr-modal-code', 'settings-code'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = data.vendorCode || '—'; });
+    const typeSel = document.getElementById('settings-type');
+    if (typeSel) {
+      if (![...typeSel.options].some(o => o.value === type)) { const o = document.createElement('option'); o.textContent = type; typeSel.appendChild(o); }
+      typeSel.value = type;
+    }
     
 // expose to the classic script (module scope is not global)
     window.vendorUid = vendorUid;
@@ -1237,16 +1227,17 @@ window.loadStats = async function() {
     const address = document.getElementById('settings-address')?.value.trim();
     const phone = document.getElementById('settings-phone')?.value.trim();
     const suburb = document.getElementById('settings-suburb')?.value.trim();
+    const businessType = document.getElementById('settings-type')?.value || undefined;
     try {
       // The PIN is NOT written from here any more. It lives in vendorSecrets,
       // which no client can read or write, and the security rules reject any
       // attempt to set `pin` on a vendor document.
       await updateDoc(doc(db, 'vendors', vendorUid), {
-        businessName: name, address, suburb, phone,
+        businessName: name, address, suburb, phone, ...(businessType ? { businessType } : {}),
         staffPin: deleteField(), pin: deleteField(),
         updatedAt: serverTimestamp()
       });
-      alert(' ✅ Business details securely committed!');
+      alert('✅ Saved.');
     } catch(e) { alert('Error processing updates.'); }
   };
 
