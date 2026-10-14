@@ -300,6 +300,7 @@ body {
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 <script>
@@ -417,16 +418,20 @@ body {
     }
 
     setLoading('btn-forgot', true, '📧 Send Reset Link');
+    // Stampd's own branded reset email (functions/accountEmails.js); Firebase's is the fallback.
+    const done = () => { setLoading('btn-forgot', false, '📧 Send Reset Link'); showToast('forgot-toast', '✅ If there\'s an account for that email, a reset link is on its way. Check your spam folder too.', true); };
     try {
-      await auth.sendPasswordResetEmail(email);
-      showToast('forgot-toast', '✅ Reset link sent! Check your inbox (and spam folder).', true);
-      setLoading('btn-forgot', false, '📧 Send Reset Link');
+      await firebase.app().functions('australia-southeast1').httpsCallable('sendPasswordResetEmail')({ email });
+      done();
     } catch (e) {
-      setLoading('btn-forgot', false, '📧 Send Reset Link');
-      const msg = e.code === 'auth/user-not-found'
-        ? '⚠️ No account found with that email. Are you registered?'
-        : friendlyError(e.code);
-      showToast('forgot-toast', msg);
+      const code = String((e && e.code) || '');
+      if (/resource-exhausted/.test(code)) { setLoading('btn-forgot', false, '📧 Send Reset Link'); showToast('forgot-toast', '⚠️ We\'ve sent a few already. Please wait a few minutes and try again.'); return; }
+      try { await auth.sendPasswordResetEmail(email); done(); }
+      catch (e2) {
+        if (e2.code === 'auth/user-not-found') { done(); return; }
+        setLoading('btn-forgot', false, '📧 Send Reset Link');
+        showToast('forgot-toast', friendlyError(e2.code));
+      }
     }
   };
 

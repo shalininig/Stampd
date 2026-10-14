@@ -370,6 +370,8 @@ module.exports = {
   cycleKey,
   alreadySent,
   hasLivePlan,
+  sendEmail,
+  ZEPTOMAIL_TOKEN,
   _setSender: (f) => { sendImpl = f; },
   _resetConfigCache: () => { cfgCache = { at: 0, value: null }; },
   GRACE_DAYS,

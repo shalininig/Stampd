@@ -647,3 +647,6 @@ Object.assign(exports, billing.build({ db, admin, REGION }));
 // See signup.js.
 Object.assign(exports, signup.build({ db, admin, REGION }));
 
+// Our own branded "confirm your email" / "reset your password" emails — see accountEmails.js.
+Object.assign(exports, require("./accountEmails").build({ db, admin, REGION }));
+

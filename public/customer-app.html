@@ -393,6 +393,7 @@ body {
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { startAppCheck } from "/appcheck.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
   import { getAuth, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, getDocs,
@@ -411,6 +412,11 @@ body {
   const app = initializeApp(firebaseConfig);
   startAppCheck(app);
   const auth = getAuth(app);
+
+  // Stampd's own branded account emails (functions/accountEmails.js);
+  // Firebase's plain email is the fallback.
+  const callFn = (name, data) => httpsCallable(getFunctions(app, 'australia-southeast1'), name)(data || {});
+  const isLimit = (e) => /resource-exhausted|too-many-requests/.test(String((e && e.code) || ''));
   const db = getFirestore(app);
 
   function bizEmoji(type) {
@@ -565,8 +571,12 @@ body {
       vb.style.display = 'block';
       document.getElementById('resend-verify').onclick = async (ev) => {
         ev.preventDefault();
-        try { await sendEmailVerification(user); ev.target.textContent = 'Sent ✓'; }
-        catch (e) { ev.target.textContent = 'Please try again in a few minutes'; }
+        try { await callFn('sendVerificationEmail'); ev.target.textContent = 'Sent ✓'; }
+        catch (e) {
+          if (isLimit(e)) { ev.target.textContent = 'Please try again in a few minutes'; return; }
+          try { await sendEmailVerification(user); ev.target.textContent = 'Sent ✓'; }
+          catch (e2) { ev.target.textContent = 'Please try again in a few minutes'; }
+        }
       };
     }
 

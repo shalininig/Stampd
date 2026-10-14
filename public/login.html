@@ -268,6 +268,7 @@ body {
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { startAppCheck } from "/appcheck.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
   import {
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
     GoogleAuthProvider, signInWithPopup, updateProfile, sendPasswordResetEmail,
@@ -289,6 +290,11 @@ body {
   const app = initializeApp(firebaseConfig);
   startAppCheck(app);
   const auth = getAuth(app);
+
+  // Stampd's own branded account emails (functions/accountEmails.js);
+  // Firebase's plain email is the fallback.
+  const callFn = (name, data) => httpsCallable(getFunctions(app, 'australia-southeast1'), name)(data || {});
+  const isLimit = (e) => /resource-exhausted|too-many-requests/.test(String((e && e.code) || ''));
   const db = getFirestore(app);
   const googleProvider = new GoogleAuthProvider();
 
@@ -355,7 +361,8 @@ body {
       await saveCustomerProfile(cred.user.uid, name, email, phone);
       // Confirms the address is real — it's how they get back in if they
       // forget their password, and it keeps bot accounts out.
-      try { await sendEmailVerification(cred.user); } catch (e) { console.warn('verification email', e); }
+      try { await callFn('sendVerificationEmail'); }
+      catch (e) { try { await sendEmailVerification(cred.user); } catch (e2) { console.warn('verification email', e2); } }
       showSuccess(name, true);
     } catch (e) {
       setLoading('btn-signup', false, '🚀 Create My Account Free');
@@ -400,11 +407,15 @@ body {
   window.handleForgotPassword = async function() {
     const email = document.getElementById('login-email').value.trim();
     if (!email) { showToast('signin-toast', '⚠️ Enter your email above first, then tap Forgot password.'); return; }
+    const done = () => showToast('signin-toast', '✅ If there\'s an account for that email, a reset link is on its way. Check your spam folder too.', true);
     try {
-      await sendPasswordResetEmail(auth, email);
-      showToast('signin-toast', '✅ Reset email sent! Check your inbox.', true);
+      await callFn('sendPasswordResetEmail', { email });
+      done();
     } catch (e) {
-      showToast('signin-toast', friendlyError(e.code));
+      if (isLimit(e)) { showToast('signin-toast', '⚠️ We\'ve sent a few already. Please wait a few minutes and try again.'); return; }
+      if (String(e && e.code).includes('invalid-argument')) { showToast('signin-toast', friendlyError('auth/invalid-email')); return; }
+      try { await sendPasswordResetEmail(auth, email); done(); }
+      catch (e2) { if (e2.code === 'auth/user-not-found') done(); else showToast('signin-toast', friendlyError(e2.code)); }
     }
   };
 </script>
