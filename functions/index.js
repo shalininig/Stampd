@@ -56,12 +56,52 @@ async function ensureSecret(vendorId) {
   return data;
 }
 
-function startOfTodayUtcOffset(tzOffsetMinutes) {
-  // Vendors are NZ-based; treat "a day" in their local time.
-  const now = new Date();
-  const local = new Date(now.getTime() + tzOffsetMinutes * 60000);
-  local.setUTCHours(0, 0, 0, 0);
-  return new Date(local.getTime() - tzOffsetMinutes * 60000);
+// ── How often a customer can collect a stamp ─────────────────
+// Each business picks the gap in Settings (stampGapHours). Default: once a
+// day. Hours are counted from the last stamp; days are NZ calendar days, so
+// "1 day" means "from tomorrow", whatever time they came in today.
+const NZ_TZ = "Pacific/Auckland";
+const STAMP_GAP_HOURS = [2, 4, 6, 24, 48, 72];
+const DAY_MS = 86400000;
+
+function nzDayNumber(d) {
+  const [y, m, day] = new Intl.DateTimeFormat("en-CA", { timeZone: NZ_TZ, year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(d).split("-").map(Number);
+  return Math.floor(Date.UTC(y, m - 1, day) / DAY_MS);
+}
+
+function stampGapHours(vendor) {
+  const h = Number(vendor && vendor.stampGapHours);
+  return STAMP_GAP_HOURS.includes(h) ? h : 24;
+}
+
+/** null if the customer can have a stamp now; otherwise a friendly message
+ *  that always says exactly when the next stamp is ready. */
+function stampGapMessage(card, vendor, now = new Date()) {
+  const last = card && card.lastStampAt && card.lastStampAt.toDate ? card.lastStampAt.toDate() : null;
+  if (!last) return null;
+  const todayN = nzDayNumber(now);
+  // Older setting, still honoured if a business never picked a gap.
+  if (vendor.stampGapHours == null && Number(vendor.maxStampsPerDay) > 1) {
+    const today = nzDayNumber(last) === todayN ? card.stampsToday || 1 : 0;
+    return today >= Number(vendor.maxStampsPerDay)
+      ? "Thanks for coming in! You've collected all of today's stamps here. Your next one is ready tomorrow."
+      : null;
+  }
+  const gap = stampGapHours(vendor);
+  if (gap < 24) {
+    const next = new Date(last.getTime() + gap * 3600000);
+    if (now >= next) return null;
+    const time = new Intl.DateTimeFormat("en-NZ", { timeZone: NZ_TZ, hour: "numeric", minute: "2-digit" })
+      .format(next).replace(/\s+/g, "").toLowerCase();
+    const when = nzDayNumber(next) === todayN ? `from ${time} today` : `from ${time} tomorrow`;
+    return `Thanks for coming in! You've got your stamp for this visit. Your next one is ready ${when}.`;
+  }
+  const nextDay = nzDayNumber(last) + gap / 24;
+  if (todayN >= nextDay) return null;
+  if (nextDay === todayN + 1) return "Thanks for coming in! You've got today's stamp. Your next one is ready tomorrow.";
+  const weekday = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "long" }).format(new Date(nextDay * DAY_MS + 12 * 3600000));
+  return `Thanks for coming in! You've got your stamp. Your next one is ready on ${weekday}.`;
 }
 
 async function checkRateLimit(key) {
@@ -205,22 +245,14 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     await clearFailures(attemptKey);
   }
 
-  // One stamp per customer per vendor per day (vendor can raise it).
+  // How often a customer can collect a stamp here (vendor's choice; once a
+  // day by default). Checked again inside the transaction below.
   const cardId = `${uid}_${vendorId}`;
   const cardRef = db.collection("stampCards").doc(cardId);
   const cardSnap = await cardRef.get();
-  const maxPerDay = vendor.maxStampsPerDay || 1;
   if (cardSnap.exists) {
-    const card = cardSnap.data();
-    const dayStart = startOfTodayUtcOffset(vendor.tzOffsetMinutes || 720); // NZ default
-    const last = card.lastStampAt ? card.lastStampAt.toDate() : null;
-    const todayCount = last && last >= dayStart ? card.stampsToday || 1 : 0;
-    if (todayCount >= maxPerDay) {
-      throw new HttpsError(
-        "failed-precondition",
-        "You've already collected a stamp here today. Come back tomorrow!"
-      );
-    }
+    const wait = stampGapMessage(cardSnap.data(), vendor);
+    if (wait) throw new HttpsError("failed-precondition", wait, { reason: "stamp-gap" });
   }
 
   const cur = currentTerms(vendor);
@@ -234,7 +266,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
 
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(cardRef);
-    const dayStart = startOfTodayUtcOffset(vendor.tzOffsetMinutes || 720);
+    const nowDay = nzDayNumber(new Date());
     let stamps = 1;
     let totalLifetime = 1;
     let stampsToday = 1;
@@ -243,6 +275,8 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
 
     if (snap.exists) {
       const card = snap.data();
+      const wait = stampGapMessage(card, vendor);
+      if (wait) throw new HttpsError("failed-precondition", wait, { reason: "stamp-gap" }); // two taps at once
       expired = cardIsExpired(card, vendor);
       // An expired card starts again from nothing, on the current offer.
       const before = expired ? 0 : card.stamps || 0;
@@ -250,7 +284,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
       stamps = before + 1;
       totalLifetime = (card.totalLifetimeStamps || 0) + 1;
       const last = card.lastStampAt ? card.lastStampAt.toDate() : null;
-      stampsToday = last && last >= dayStart ? (card.stampsToday || 0) + 1 : 1;
+      stampsToday = last && nzDayNumber(last) === nowDay ? (card.stampsToday || 0) + 1 : 1;
     }
 
     const stampGoal = terms.stampGoal;

@@ -981,6 +981,19 @@
           </div>
 
           <div>
+            <div class="card" style="margin-bottom:20px">
+              <div class="settings-section">
+                <h3>⏱️ How often can a customer get a stamp?</h3>
+                <div class="form-group">
+                  <select class="form-select" id="settings-gap">
+                    <option value="2">Every 2 hours</option><option value="4">Every 4 hours</option><option value="6">Every 6 hours</option>
+                    <option value="24" selected>Once a day</option><option value="48">Every 2 days</option><option value="72">Every 3 days</option>
+                  </select>
+                  <small style="display:block;margin-top:6px;opacity:0.6;line-height:1.6">Stops someone collecting lots of stamps in one visit. Once a day suits most businesses; choose hours if customers often come back later the same day. If someone tries too soon, they're told kindly when their next stamp is ready.</small>
+                </div>
+                <button class="send-btn" onclick="saveStampGap()">💾 Save</button>
+              </div>
+            </div>
             <div class="card">
               <div class="settings-section">
                 <h3>🔢 Your business code</h3>
@@ -1086,6 +1099,8 @@
 
     document.getElementById('qr-modal-biz').textContent = name + ' · stampd.co.nz';
     ['qr-modal-code', 'settings-code'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = data.vendorCode || '—'; });
+    const gapSel = document.getElementById('settings-gap');
+    if (gapSel) gapSel.value = [2, 4, 6, 24, 48, 72].includes(Number(data.stampGapHours)) ? String(Number(data.stampGapHours)) : '24';
     const typeSel = document.getElementById('settings-type');
     if (typeSel) {
       if (![...typeSel.options].some(o => o.value === type)) { const o = document.createElement('option'); o.textContent = type; typeSel.appendChild(o); }
@@ -1239,6 +1254,16 @@ window.loadStats = async function() {
       });
       alert('✅ Saved.');
     } catch(e) { alert('Error processing updates.'); }
+  };
+
+  // Minimum time between stamps for one customer (enforced by issueStamp).
+  window.saveStampGap = async function() {
+    if (!vendorUid) return;
+    const hours = Number(document.getElementById('settings-gap')?.value || 24);
+    try {
+      await updateDoc(doc(db, 'vendors', vendorUid), { stampGapHours: hours, updatedAt: serverTimestamp() });
+      alert('✅ Saved.');
+    } catch(e) { alert('Could not save. Please try again.'); }
   };
 
   // ── Staff PIN (server-owned) ──────────────────────────────

@@ -356,9 +356,9 @@ body {
 
   <!-- ALREADY STAMPED TODAY -->
   <div class="screen already-screen" id="sc-already">
-    <div class="already-icon">📅</div>
-    <div class="already-title">ALREADY STAMPED!</div>
-    <div class="already-msg" id="already-msg">You've already collected a stamp here today. Come back tomorrow for your next one!</div>
+    <div class="already-icon">😊</div>
+    <div class="already-title">ALL STAMPED</div>
+    <div class="already-msg" id="already-msg">Thanks for coming in! You've got your stamp. Your next one will be ready soon.</div>
     <div class="stamp-card">
       <div class="card-label" id="already-card-label">Your current card</div>
       <div class="stamps-grid" id="already-stamps"></div>
@@ -483,8 +483,16 @@ body {
     } catch (e) {
       console.error(e);
       if (e && e.code === 'functions/permission-denied') return false;   // wrong PIN
+      // Already stamped within the business's chosen gap: a calm screen, not an error.
+      if (e && e.details && e.details.reason === 'stamp-gap') {
+        document.getElementById('already-msg').textContent = e.message;
+        const card = document.querySelector('#sc-already .stamp-card');
+        if (card) card.style.display = 'none';
+        goTo('sc-already');
+        return true;
+      }
       if (e && e.code === 'functions/failed-precondition') {
-        showError(e.message || 'You have already collected a stamp here today.');
+        showError(e.message || 'This business isn\'t taking stamps right now.');
         return true;
       }
       if (e && e.code === 'functions/resource-exhausted') {
