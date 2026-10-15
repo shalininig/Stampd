@@ -857,7 +857,7 @@
               <div class="card-action" onclick="switchPage('notifications')">See More →</div>
             </div>
             <div class="activity-list" id="dashboard-activity-list">
-              <p style="font-size:0.88rem;color:var(--muted);padding:10px 0;">No client events logged today.</p>
+              <p style="font-size:0.88rem;color:var(--muted);padding:10px 0;">Loading…</p>
             </div>
           </div>
 
@@ -926,7 +926,7 @@
 
       <div class="page" id="page-notifications">
         <div class="card">
-          <div class="card-header"><div class="card-title">System Logs & Activities</div></div>
+          <div class="card-header"><div class="card-title">Recent activity</div></div>
           <div class="activity-list" id="full-activity-list">
             <p style="color:var(--muted)">No operational entries recorded yet.</p>
           </div>
@@ -1176,6 +1176,29 @@ h1{font-size:34px;margin:10px 0 4px}.sub{font-size:20px;margin:0 0 18px;color:#3
       return `<div class="bar-col"><div class="bar${today ? ' active' : ''}" style="height:${h}%" title="${d.count} on ${names[d.start.getDay()]}"></div><div class="bar-label">${today ? 'Today' : names[d.start.getDay()]}</div></div>`;
     }).join('');
   }
+  // Recent Activity (Overview, last 5) and the full list (Notifications, last 30):
+  // stamps from the cards, rewards earned and handed over from the rewards.
+  function activityWhen(ms) {
+    const d = new Date(ms), now = new Date();
+    const mins = Math.round((now - d) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const sameDay = d.toDateString() === now.toDateString();
+    const y = new Date(now); y.setDate(now.getDate() - 1);
+    const time = d.toLocaleTimeString('en-NZ', { hour: 'numeric', minute: '2-digit' });
+    if (sameDay) return `today ${time}`;
+    if (d.toDateString() === y.toDateString()) return `yesterday ${time}`;
+    return d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+  }
+  function renderActivity(events) {
+    const list = events.filter((e) => e.at).sort((a, b) => b.at - a.at);
+    const row = (e) => `<div class="activity-item"><div class="activity-avatar">${e.icon}</div><div class="activity-info"><div class="activity-name">${escHtml(e.who)}</div><div class="activity-detail">${escHtml(e.what)}</div></div><div class="activity-time">${escHtml(activityWhen(e.at))}</div></div>`;
+    const empty = (msg) => `<p style="font-size:0.88rem;color:var(--muted);padding:10px 0;">${msg}</p>`;
+    const top = document.getElementById('dashboard-activity-list');
+    if (top) top.innerHTML = list.length ? list.slice(0, 5).map(row).join('') : empty("Nothing yet — stamps and rewards will show here.");
+    const full = document.getElementById('full-activity-list');
+    if (full) full.innerHTML = list.length ? list.slice(0, 30).map(row).join('') : empty("Nothing yet — stamps and rewards will show here.");
+  }
   function renderTopCustomers(people) {
     const el = document.getElementById('top-customers-list');
     if (!el) return;
@@ -1198,6 +1221,7 @@ window.loadStats = async function() {
     const days = [];
     for (let i = 6; i >= 0; i--) { const d0 = new Date(startOfToday); d0.setDate(d0.getDate() - i); days.push({ start: d0, count: 0 }); }
     const people = [];
+    const events = [];
     snap.forEach(d => {
       const data = d.data();
       totalCustomers++;
@@ -1208,6 +1232,8 @@ window.loadStats = async function() {
         for (let i = days.length - 1; i >= 0; i--) { if (last >= days[i].start) { days[i].count++; break; } }
       }
       people.push({ name: data.customerName || 'Customer', visits: data.totalLifetimeStamps || data.stamps || 0 });
+      if (last) events.push({ at: last.getTime(), icon: '⭐', who: data.customerName || 'Customer',
+        what: Number(data.stamps) > 0 ? `Got a stamp — ${Number(data.stamps)} of ${Number(data.stampGoal || data.goal) || (vendorData && Number(vendorData.stampGoal)) || 10}` : 'Got a stamp' });
     });
     renderVisitsChart(days);
     renderTopCustomers(people);
@@ -1219,8 +1245,15 @@ window.loadStats = async function() {
       const waiting = all.filter((x) => x.status !== 'redeemed');
       rewardsIssued = waiting.length;
       rewardsHanded = all.length - waiting.length;
+      const ms = (t) => (t && t.toMillis ? t.toMillis() : 0);
+      all.forEach((x) => {
+        const who = x.customerName || 'Customer';
+        if (ms(x.earnedAt)) events.push({ at: ms(x.earnedAt), icon: '🎁', who, what: `Earned ${x.reward || 'a reward'}` });
+        if (x.status === 'redeemed' && ms(x.redeemedAt)) events.push({ at: ms(x.redeemedAt), icon: '✅', who, what: `${x.reward || 'Reward'} handed over` });
+      });
       window.renderWaitingRewards && window.renderWaitingRewards(waiting);
     } catch (e) { console.error(e); }
+    renderActivity(events);
     const statCards = {
       'stat-customers': { val: totalCustomers, change: 'Total customers tracked' },
       'stat-today': { val: visitedToday, change: 'Visited today' },
