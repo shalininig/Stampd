@@ -91,6 +91,23 @@ Get the app: ${a(APP_STORE, "App Store")} &nbsp;|&nbsp; ${a(GOOGLE_PLAY, "Google
   return { subject: L.subject, html, text };
 }
 
+/** Send people to our own page (stampd.co.nz/account) rather than Firebase's
+ *  plain one. Same secure code; anything unexpected keeps Firebase's link. */
+function ourLink(link) {
+  try {
+    const u = new URL(link);
+    const mode = u.searchParams.get("mode"), code = u.searchParams.get("oobCode");
+    if (!code || !["verifyEmail", "resetPassword"].includes(mode)) return link;
+    const out = new URL("https://stampd.co.nz/account");
+    out.searchParams.set("mode", mode);
+    out.searchParams.set("oobCode", code);
+    for (const k of ["apiKey", "lang"]) if (u.searchParams.get(k)) out.searchParams.set(k, u.searchParams.get(k));
+    return out.toString();
+  } catch (e) {
+    return link;
+  }
+}
+
 function fingerprint(request) {
   const raw = request && request.rawRequest;
   const fwd = raw && raw.headers && String(raw.headers["x-forwarded-for"] || "").split(",")[0].trim();
@@ -127,7 +144,7 @@ function build({ db, admin, REGION }) {
     if (!(await allowed(db, [{ id: "verify_" + keyFor(uid), perHour: 3, perDay: 8 }]))) {
       throw new HttpsError("resource-exhausted", "We've sent a few already. Please wait a few minutes and try again.");
     }
-    const link = await admin.auth().generateEmailVerificationLink(user.email);
+    const link = ourLink(await admin.auth().generateEmailVerificationLink(user.email));
     const msg = accountEmail("verify", { name: user.displayName, email: user.email, link });
     await lifecycle.sendEmail(lifecycle.ZEPTOMAIL_TOKEN.value(), user.email, user.displayName, msg);
     await db.collection("emailLog").add({ kind: "verify", uid, to: user.email, at: admin.firestore.FieldValue.serverTimestamp() }).catch(() => {});
@@ -145,7 +162,7 @@ function build({ db, admin, REGION }) {
 
     let user;
     try { user = await admin.auth().getUserByEmail(email); } catch (e) { return { ok: true }; } // no account: say nothing
-    const link = await admin.auth().generatePasswordResetLink(email);
+    const link = ourLink(await admin.auth().generatePasswordResetLink(email));
     const msg = accountEmail("reset", { name: user.displayName, email, link });
     await lifecycle.sendEmail(lifecycle.ZEPTOMAIL_TOKEN.value(), email, user.displayName, msg);
     await db.collection("emailLog").add({ kind: "reset", uid: user.uid, to: email, at: admin.firestore.FieldValue.serverTimestamp() }).catch(() => {});
@@ -155,4 +172,4 @@ function build({ db, admin, REGION }) {
   return { sendVerificationEmail, sendPasswordResetEmail };
 }
 
-module.exports = { build, accountEmail };
+module.exports = { build, accountEmail, ourLink };

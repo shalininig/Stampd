@@ -642,7 +642,7 @@ exports.onVendorCreated = onDocumentCreated(
     const v = snap.exists ? snap.data() : {};
     const trial = v.trialEndsAt || v.subscriptionStatus
       ? {}
-      : billing.newVendorTrial(admin, await billing.trialMonthsFor(db));
+      : billing.newVendorTrial(admin, await billing.trialMonthsFor(db), new Date(), await billing.trialPlanFor(db));
     await db.collection("vendors").doc(vendorId).set(
       {
         ...trial,

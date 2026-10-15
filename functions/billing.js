@@ -56,6 +56,8 @@ const PRICE_VERSION = "v1";
 const DEFAULT_TRIAL_MONTHS = 6;
 const TRIAL_CHOICES = [0, 1, 2, 3, 6, 12];
 
+const DEFAULT_TRIAL_PLAN = "standard";
+
 async function trialMonthsFor(db) {
   try {
     const snap = await db.collection("config").doc("billing").get();
@@ -102,12 +104,26 @@ function addMonths(date, months) {
 
 /** Defaults written onto a brand-new vendor. 0 months = no trial: they
  *  choose a plan and are billed from the start. */
-function newVendorTrial(admin, months = DEFAULT_TRIAL_MONTHS, now = new Date()) {
+function newVendorTrial(admin, months = DEFAULT_TRIAL_MONTHS, now = new Date(), plan = DEFAULT_TRIAL_PLAN) {
   if (!months) return { subscriptionStatus: "none" };
   return {
     subscriptionStatus: "trialing",
     trialEndsAt: admin.firestore.Timestamp.fromDate(addMonths(now, months)),
+    // Which plan's features the trial gives (agreed 15 Oct: Standard, so
+    // every new business tries Featured + rotating PIN). Owner can change it.
+    ...(plan ? { plan } : {}),
   };
+}
+
+/** Owner console → Revenue → "Trial gives": standard (default) or starter. */
+async function trialPlanFor(db) {
+  try {
+    const snap = await db.collection("config").doc("billing").get();
+    const p = snap.exists ? String(snap.data().trialPlan || "") : "";
+    return ["standard", "starter"].includes(p) ? p : DEFAULT_TRIAL_PLAN;
+  } catch (e) {
+    return DEFAULT_TRIAL_PLAN;
+  }
 }
 
 /** Stripe needs a trial end at least 48 hours away; otherwise bill now. */
@@ -242,8 +258,27 @@ function build({ db, admin, REGION }) {
     return { uid, ref, vendor: snap.data(), email: request.auth.token && request.auth.token.email };
   }
 
+  // A Stripe problem becomes a message the vendor can read, and the real
+  // reason goes to the logs. "Could not open checkout" with no reason cost
+  // an afternoon on 15 Oct (it was a bad secret key).
+  function stripeProblem(e, what) {
+    if (e instanceof HttpsError) throw e;
+    console.error(`Stripe failed to ${what}:`, e && e.type, e && e.message);
+    if (e && e.type === "StripeAuthenticationError") {
+      throw new HttpsError("unavailable", "Payments aren't available right now. Please try again later, or email support@stampd.co.nz.");
+    }
+    throw new HttpsError("aborted", `Stripe couldn't ${what}${e && e.message ? ` (${e.message})` : ""}. Please try again, or email support@stampd.co.nz.`);
+  }
+
   // ── createCheckoutSession ─────────────────────────────────
   const createCheckoutSession = onCall(opts, async (request) => {
+    try {
+      return await openCheckout(request);
+    } catch (e) {
+      stripeProblem(e, "open checkout");
+    }
+  });
+  async function openCheckout(request) {
     const { uid, ref, vendor, email } = await requireVendor(request);
     const plan = String((request.data && request.data.plan) || "");
     if (!PLANS[plan]) throw new HttpsError("invalid-argument", "Pick a plan.");
@@ -272,7 +307,7 @@ function build({ db, admin, REGION }) {
       cancel_url: `${origin}/dashboard.html?billing=cancel`,
     });
     return { url: session.url };
-  });
+  }
 
   // ── createBillingPortalSession ────────────────────────────
   const createBillingPortalSession = onCall(opts, async (request) => {
@@ -280,14 +315,49 @@ function build({ db, admin, REGION }) {
     if (!vendor.stripeCustomerId) {
       throw new HttpsError("failed-precondition", "Choose a plan first.");
     }
-    const stripe = stripeClient();
-    const configuration = await ensurePortalConfig(stripe);
-    const session = await stripe.billingPortal.sessions.create({
-      customer: vendor.stripeCustomerId,
-      configuration,
-      return_url: `${originFor(request)}/dashboard.html?billing=portal`,
-    });
-    return { url: session.url };
+    try {
+      const stripe = stripeClient();
+      const configuration = await ensurePortalConfig(stripe);
+      const session = await stripe.billingPortal.sessions.create({
+        customer: vendor.stripeCustomerId,
+        configuration,
+        return_url: `${originFor(request)}/dashboard.html?billing=portal`,
+      });
+      return { url: session.url };
+    } catch (e) {
+      stripeProblem(e, "open billing");
+    }
+  });
+
+  // ── listMyBilling ─────────────────────────────────────────
+  // For the Plan & Billing page: the card on file and past invoices
+  // (date, amount, paid/failed, PDF). Read-only.
+  const listMyBilling = onCall(opts, async (request) => {
+    const { vendor } = await requireVendor(request);
+    if (!vendor.stripeCustomerId) return { card: null, invoices: [] };
+    try {
+      const stripe = stripeClient();
+      let pm = null;
+      if (vendor.stripeSubscriptionId) {
+        const sub = await stripe.subscriptions.retrieve(vendor.stripeSubscriptionId, { expand: ["default_payment_method"] });
+        pm = sub && sub.default_payment_method;
+      }
+      if (!pm || !pm.card) {
+        const cust = await stripe.customers.retrieve(vendor.stripeCustomerId, { expand: ["invoice_settings.default_payment_method"] });
+        pm = cust && cust.invoice_settings && cust.invoice_settings.default_payment_method;
+      }
+      const card = pm && pm.card ? { brand: pm.card.brand, last4: pm.card.last4, expMonth: pm.card.exp_month, expYear: pm.card.exp_year } : null;
+      const list = await stripe.invoices.list({ customer: vendor.stripeCustomerId, limit: 12 });
+      const invoices = (list.data || []).map((i) => ({
+        date: (i.status_transitions && i.status_transitions.paid_at ? i.status_transitions.paid_at : i.created) * 1000,
+        amount: i.total, currency: i.currency, status: i.status,
+        description: i.lines && i.lines.data && i.lines.data[0] ? i.lines.data[0].description : "",
+        pdf: i.invoice_pdf || null, page: i.hosted_invoice_url || null,
+      }));
+      return { card, invoices };
+    } catch (e) {
+      stripeProblem(e, "load your billing details");
+    }
   });
 
   // ── syncMyBilling ─────────────────────────────────────────
@@ -330,7 +400,7 @@ function build({ db, admin, REGION }) {
     }
   );
 
-  return { createCheckoutSession, createBillingPortalSession, syncMyBilling, dailyBillingSync };
+  return { createCheckoutSession, createBillingPortalSession, syncMyBilling, listMyBilling, dailyBillingSync };
 }
 
 module.exports = {
@@ -339,6 +409,7 @@ module.exports = {
   _stripe: () => stripeFactory(STRIPE_SECRET_KEY.value()),
   newVendorTrial,
   trialMonthsFor,
+  trialPlanFor,
   TRIAL_CHOICES,
   // exported for tests
   _setStripeFactory,

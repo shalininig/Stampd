@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stampd help</title>
+<meta name="description" content="Help for businesses and customers using Stampd digital stamp cards.">
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- stampd.co.nz/help — linked from the app's Help & Support ("More help").
+     The app itself never mentions prices or paying on the website (Apple
+     3.1.1); this page can. Agreed 15 Oct 2026. -->
+<style>
+  :root { --fire:#FF3008; --bg:#0D0500; --card:#1a0f0a; --muted:rgba(255,255,255,.65); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:#fff; font-family:'DM Sans',Arial,sans-serif; line-height:1.6; }
+  header { padding:22px 16px; border-bottom:1px solid rgba(255,255,255,.08); }
+  header .in, main { max-width:760px; margin:0 auto; }
+  header a { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:5px; color:var(--fire); text-decoration:none; }
+  main { padding:28px 16px 60px; }
+  h1 { font-family:'Bebas Neue',sans-serif; font-size:48px; letter-spacing:2px; margin:0 0 6px; }
+  h2 { font-size:1.05rem; letter-spacing:2px; color:var(--fire); margin:36px 0 10px; text-transform:uppercase; }
+  .lead { color:var(--muted); margin:0 0 10px; }
+  details { background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:14px; margin:0 0 10px; }
+  summary { cursor:pointer; padding:16px 18px; font-weight:700; list-style:none; display:flex; justify-content:space-between; gap:12px; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:'+'; color:var(--muted); font-weight:400; font-size:1.3rem; line-height:1; }
+  details[open] summary::after { content:'–'; }
+  details .a { padding:0 18px 16px; color:var(--muted); }
+  details .a p { margin:0 0 10px; }
+  a { color:var(--fire); }
+  .contact { margin-top:36px; background:var(--card); border:1px solid rgba(255,48,8,.4); border-radius:14px; padding:20px; }
+  .contact strong { display:block; margin-bottom:4px; }
+  table { width:100%; border-collapse:collapse; margin:6px 0 10px; font-size:.92rem; }
+  td, th { text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08); }
+  th { color:#fff; }
+</style>
+</head>
+<body>
+<header><div class="in"><a href="/">STAMPD</a></div></header>
+<main>
+  <h1>Help</h1>
+  <p class="lead">Answers for businesses and customers. Can't find yours? Email <a href="mailto:support@stampd.co.nz">support@stampd.co.nz</a> — we reply within 24–48 hours.</p>
+
+  <h2>Plans &amp; billing (businesses)</h2>
+  <details><summary>What do the plans cost?</summary><div class="a">
+    <table>
+      <tr><th>Starter</th><td>NZ$29 + GST a month</td><td>Stamp cards and rewards, reward alerts, customer list, fixed staff PIN</td></tr>
+      <tr><th>Standard</th><td>NZ$49 + GST a month</td><td>Everything in Starter, plus <strong>Featured</strong> at the top of Discover in your suburb and a <strong>rotating staff PIN</strong></td></tr>
+    </table>
+    <p>New businesses start with a free trial. You're never charged during it.</p>
+  </div></details>
+  <details><summary>How do I choose, change or cancel my plan?</summary><div class="a">
+    <p>Log in to your dashboard at <a href="/vendor-login.html">stampd.co.nz → Vendor Login</a>, then open <strong>Plan &amp; Billing</strong>.</p>
+    <p>On a free trial: choose the plan you'd like after your trial — nothing is charged until the trial ends. Once you have a plan, <strong>Manage billing</strong> lets you switch plan, update your card, see invoices or cancel.</p>
+    <p>Prefer us to do it? Email <a href="mailto:support@stampd.co.nz?subject=Plan%20change">support@stampd.co.nz</a> with your business name.</p>
+  </div></details>
+  <details><summary>What happens when my free trial ends?</summary><div class="a">
+    <p>We email you 30 days and 7 days before it ends. If you haven't chosen a plan by then, stamping keeps working for 14 more days, then pauses until you choose one. Nothing is ever deleted — your customers' cards and stamps are kept safe, and everything switches back on the moment you pick a plan.</p>
+  </div></details>
+  <details><summary>Will my customers lose their stamps if I change plan?</summary><div class="a">
+    <p>No. Every card and reward stays exactly as it is, whatever plan you're on.</p>
+  </div></details>
+  <details><summary>How do I get an invoice?</summary><div class="a">
+    <p>Dashboard → <strong>Plan &amp; Billing</strong> lists your payments with a PDF for each. Prices are GST-exclusive; your invoices show the GST.</p>
+  </div></details>
+
+  <h2>Running Stampd at your counter</h2>
+  <details><summary>How do customers collect a stamp?</summary><div class="a">
+    <p>They open the Stampd app, tap <strong>Scan</strong> and scan your counter QR code. If you require a PIN, they hand you their phone and you type your staff PIN.</p>
+    <p>Print your QR code from the dashboard: <strong>View QR Code → Print for the counter</strong>.</p>
+  </div></details>
+  <details><summary>The customer's camera won't scan</summary><div class="a">
+    <p>In the app they tap <strong>Enter PIN with Vendor</strong> and type your 8-character business code (printed under your QR code). Then you type your staff PIN.</p>
+  </div></details>
+  <details><summary>A regular came back later and couldn't get a stamp</summary><div class="a">
+    <p>You choose how often a customer can collect a stamp: every 2, 4 or 6 hours, once a day (the default), or every 2 or 3 days. Change it in Settings, in the app or on the dashboard. If someone tries too soon, they're told kindly when their next stamp is ready.</p>
+  </div></details>
+  <details><summary>A customer earned a reward — what now?</summary><div class="a">
+    <p>The customer taps the reward in their app and scans your counter QR code. A big green <strong>"Claimed just now"</strong> screen appears with the time ticking — that's your cue to hand it over. It's used up there and then, so it can't be shown twice. If their camera won't scan, you can type your staff PIN instead.</p>
+  </div></details>
+  <details><summary>What about when there's no internet?</summary><div class="a">
+    <p>Customers who've been to you before can still collect a stamp: you type your staff PIN and the stamp is saved on their phone, then added when they're back online. Rewards can be claimed by scanning, too. A customer's very first stamp with you needs internet.</p>
+  </div></details>
+  <details><summary>Where is my staff PIN? Can I choose my own?</summary><div class="a">
+    <p>In the app: menu → <strong>Staff PIN</strong>. On the dashboard: <strong>Settings → Staff PIN</strong>. You can generate a new one or choose your own — easy ones like 1234 or 0000 aren't allowed. Keep it to staff only.</p>
+  </div></details>
+  <details><summary>Can I change my reward after customers have started?</summary><div class="a">
+    <p>Yes. Customers part-way through a card keep their deal and are offered the choice to switch. Nobody loses stamps.</p>
+  </div></details>
+
+  <h2>Customers</h2>
+  <details><summary>I got a new phone — are my stamps gone?</summary><div class="a">
+    <p>No. Your cards live in your Stampd account, not on your phone. Install Stampd, sign in with the same email, and everything is there.</p>
+  </div></details>
+  <details><summary>I forgot my password</summary><div class="a">
+    <p>Tap <strong>Forgot Password?</strong> on the sign-in screen. The reset email comes from Stampd — check your spam folder if it doesn't arrive within a few minutes.</p>
+  </div></details>
+
+  <div class="contact">
+    <strong>Still stuck?</strong>
+    Email <a href="mailto:support@stampd.co.nz">support@stampd.co.nz</a> — tell us your business name or the email on your account and what happened.
+  </div>
+</main>
+</body>
+</html>

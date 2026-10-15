@@ -46,13 +46,20 @@ const from = (ip) => ({ rawRequest: { headers: { "x-forwarded-for": ip } } });
   const r = accountEmail("reset", { name: "", email: "b@x.nz", link: "L" });
   check("reset subject, no name → 'Hi there'", r.subject === "Reset your Stampd password" && r.html.includes("Hi there,"));
   check("names are escaped", accountEmail("verify", { name: "<b>x</b>", email: "e", link: "L" }).html.includes("Hi &lt;b&gt;x&lt;/b&gt;,"));
+  const { ourLink } = require(path.join(__dirname, "../functions/accountEmails.js"));
+  check("links go to stampd.co.nz/account (code, apiKey, lang kept)",
+    ourLink("https://stampd-e4353.firebaseapp.com/__/auth/action?mode=resetPassword&oobCode=XY_z-1&apiKey=K&lang=en&continueUrl=x")
+      === "https://stampd.co.nz/account?mode=resetPassword&oobCode=XY_z-1&apiKey=K&lang=en");
+  check("other kinds of link left as Firebase made them",
+    ourLink("https://x/__/auth/action?mode=recoverEmail&oobCode=1") === "https://x/__/auth/action?mode=recoverEmail&oobCode=1"
+    && ourLink("not a link") === "not a link");
 
   // sendVerificationEmail
   addUser("a", "a@x.nz");
   try { await fns.sendVerificationEmail.run({ data: {} }); check("verify needs sign-in", false); }
   catch (e) { check("verify needs sign-in", /unauthenticated/.test(e.code), e.code); }
   let res = await fns.sendVerificationEmail.run({ ...as("a"), data: {} });
-  check("verify email sent to the account's own address", res.ok && outbox.length === 1 && outbox[0].to === "a@x.nz" && outbox[0].html.includes("V-a@x.nz"), outbox);
+  check("verify email sent to the account's own address", res.ok && outbox.length === 1 && outbox[0].to === "a@x.nz" && outbox[0].html.includes("https://stampd.co.nz/account?mode=verifyEmail&amp;oobCode=V-a%40x.nz"), outbox);
   await fns.sendVerificationEmail.run({ ...as("a"), data: {} });
   await fns.sendVerificationEmail.run({ ...as("a"), data: {} });
   try { await fns.sendVerificationEmail.run({ ...as("a"), data: {} }); check("4th in an hour refused", false); }
@@ -65,7 +72,7 @@ const from = (ip) => ({ rawRequest: { headers: { "x-forwarded-for": ip } } });
   // sendPasswordResetEmail
   outbox.length = 0;
   res = await fns.sendPasswordResetEmail.run({ ...from("1.1.1.1"), data: { email: " A@X.NZ " } });
-  check("reset sent (email tidied: trimmed, lower-case)", res.ok && outbox.length === 1 && outbox[0].to === "a@x.nz" && outbox[0].html.includes("R-a@x.nz"), outbox);
+  check("reset sent (email tidied: trimmed, lower-case)", res.ok && outbox.length === 1 && outbox[0].to === "a@x.nz" && outbox[0].html.includes("https://stampd.co.nz/account?mode=resetPassword&amp;oobCode=R-a%40x.nz"), outbox);
   res = await fns.sendPasswordResetEmail.run({ ...from("1.1.1.1"), data: { email: "nobody@x.nz" } });
   check("no such account → same 'ok', nothing sent", res.ok && outbox.length === 1);
   try { await fns.sendPasswordResetEmail.run({ ...from("1.1.1.1"), data: { email: "bad" } }); check("bad email refused", false); }

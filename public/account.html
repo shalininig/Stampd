@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stampd — your account</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Our own page for the links in Stampd's emails (agreed 15 Oct 2026) — instead
+  of Firebase's plain firebaseapp.com page. Firebase still does the real work
+  (applyActionCode / confirmPasswordReset); this page only looks after the
+  wording. If anything fails there's a button to Firebase's own page.
+  Links are built in functions/accountEmails.js:
+    /account?mode=verifyEmail&oobCode=…   /account?mode=resetPassword&oobCode=…
+-->
+<style>
+  :root { --fire:#FF3008; --bg:#0D0500; --card:#1a0f0a; --muted:rgba(255,255,255,.6); }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:#fff; font-family:'DM Sans',Arial,sans-serif; display:flex; align-items:center; justify-content:center; padding:24px 16px; }
+  .box { width:100%; max-width:420px; background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:32px 26px; text-align:center; }
+  .logo { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:22px; }
+  .logo img { width:36px; height:36px; border-radius:8px; }
+  .logo span { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:5px; color:var(--fire); }
+  h1 { font-size:1.35rem; margin:6px 0 10px; }
+  p { color:var(--muted); line-height:1.6; margin:0 0 16px; font-size:.95rem; }
+  .big { font-size:46px; margin-bottom:6px; }
+  label { display:block; text-align:left; font-size:.8rem; font-weight:700; color:var(--muted); margin:14px 0 6px; }
+  input { width:100%; padding:13px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:#fff; font-size:1rem; font-family:inherit; }
+  input:focus { outline:none; border-color:var(--fire); }
+  button, .btn { display:block; width:100%; margin-top:20px; padding:14px; border:0; border-radius:12px; background:var(--fire); color:#fff; font-weight:800; font-size:1rem; cursor:pointer; text-decoration:none; font-family:inherit; }
+  button:disabled { opacity:.6; cursor:default; }
+  .ghost { background:transparent; border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.85); font-weight:700; font-size:.9rem; }
+  .err { color:#ffb3a0; font-weight:700; font-size:.88rem; margin-top:12px; min-height:1em; }
+  .foot { margin-top:22px; font-size:.8rem; color:rgba(255,255,255,.4); }
+  .foot a { color:var(--fire); }
+</style>
+</head>
+<body>
+<main class="box" id="box">
+  <div class="logo"><img src="/icon-192.png" alt=""><span>STAMPD</span></div>
+  <div id="view"><p>One moment…</p></div>
+  <div class="foot">Need help? <a href="mailto:support@stampd.co.nz">support@stampd.co.nz</a></div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM",
+  authDomain: "stampd-e4353.firebaseapp.com",
+  projectId: "stampd-e4353",
+  storageBucket: "stampd-e4353.firebasestorage.app",
+  messagingSenderId: "272536856213",
+  appId: "1:272536856213:web:c5d1a89583cb6d2e975d9c"
+});
+const auth = getAuth(app);
+
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode');
+const code = params.get('oobCode');
+const view = document.getElementById('view');
+const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Firebase's own page, same link — the back-up if our page can't finish.
+const firebasePage = `https://stampd-e4353.firebaseapp.com/__/auth/action?${params.toString()}`
+  + (params.get('apiKey') ? '' : '&apiKey=AIzaSyDXp4LeZmOXVe0ur7pDhP7bIxOA9gCjqyM');
+const backup = `<a class="btn ghost" href="${esc(firebasePage)}">Try another way</a>`;
+
+const expiredMsg = (what) => `
+  <div class="big">⏳</div>
+  <h1>This link has expired</h1>
+  <p>${what}</p>`;
+
+function isExpired(e) {
+  const c = String(e && e.code || '');
+  return c.includes('expired-action-code') || c.includes('invalid-action-code');
+}
+
+async function confirmEmail() {
+  try {
+    await applyActionCode(auth, code);
+    view.innerHTML = `
+      <div class="big">✅</div>
+      <h1>Your email is confirmed!</h1>
+      <p>Thanks — you can go back to the Stampd app now. If we ever need to help you back into your account, this is the address we'll use.</p>`;
+  } catch (e) {
+    console.error(e);
+    view.innerHTML = isExpired(e)
+      ? expiredMsg("It's already been used, or it's too old. Open the Stampd app and tap <strong>Send it again</strong> for a fresh one.")
+      : `<div class="big">⚠️</div><h1>That didn't work</h1><p>Something went wrong confirming your email.</p>${backup}`;
+  }
+}
+
+async function resetPassword() {
+  let email;
+  try {
+    email = await verifyPasswordResetCode(auth, code);
+  } catch (e) {
+    console.error(e);
+    view.innerHTML = isExpired(e)
+      ? expiredMsg("Reset links only work once and only for a short while. In the Stampd app, tap <strong>Forgot Password?</strong> to get a new one.")
+      : `<div class="big">⚠️</div><h1>That didn't work</h1><p>Something went wrong opening your reset link.</p>${backup}`;
+    return;
+  }
+  view.innerHTML = `
+    <h1>Choose a new password</h1>
+    <p>For your Stampd account <strong style="color:#fff">${esc(email)}</strong>. Your stamp cards and rewards stay exactly as they are.</p>
+    <form id="f" autocomplete="on">
+      <input type="email" name="email" value="${esc(email)}" autocomplete="username" style="display:none" readonly>
+      <label for="p1">New password</label>
+      <input id="p1" type="password" minlength="6" autocomplete="new-password" required>
+      <label for="p2">Type it again</label>
+      <input id="p2" type="password" minlength="6" autocomplete="new-password" required>
+      <div class="err" id="err"></div>
+      <button id="go" type="submit">Save new password</button>
+    </form>`;
+  document.getElementById('f').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
+    const err = document.getElementById('err'), go = document.getElementById('go');
+    if (p1.length < 6) { err.textContent = 'Please use at least 6 characters.'; return; }
+    if (p1 !== p2) { err.textContent = "The two passwords don't match."; return; }
+    go.disabled = true; go.textContent = 'Saving…'; err.textContent = '';
+    try {
+      await confirmPasswordReset(auth, code, p1);
+      view.innerHTML = `
+        <div class="big">✅</div>
+        <h1>Done — your password is changed</h1>
+        <p>Go back to the Stampd app (or the website) and sign in with your new password.</p>`;
+    } catch (e) {
+      console.error(e);
+      go.disabled = false; go.textContent = 'Save new password';
+      err.innerHTML = isExpired(e) ? 'This link has expired — in the app, tap <strong>Forgot Password?</strong> again.'
+        : String(e && e.code || '').includes('weak-password') ? 'Please choose a stronger password (at least 6 characters).'
+        : `Something went wrong. ${backup}`;
+    }
+  });
+}
+
+if (!code || !mode) {
+  view.innerHTML = `<h1>Nothing to do here</h1><p>This page opens from the links in Stampd's emails.</p><a class="btn" href="/">Go to stampd.co.nz</a>`;
+} else if (mode === 'verifyEmail') {
+  confirmEmail();
+} else if (mode === 'resetPassword') {
+  resetPassword();
+} else {
+  // recoverEmail, verifyAndChangeEmail, signIn… — Firebase's page handles those.
+  location.replace(firebasePage);
+}
+</script>
+</body>
+</html>

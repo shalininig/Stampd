@@ -418,6 +418,10 @@
         <option value="1">1 month</option>
         <option value="0">No free trial</option>
       </select>
+      <select id="trial-plan" class="search" style="max-width:240px;flex:none" title="Which plan's features the free trial gives">
+        <option value="standard">Trial gives Standard (Featured + rotating PIN)</option>
+        <option value="starter">Trial gives Starter</option>
+      </select>
       <button class="btn btn-approve" id="btn-save-trial" style="margin-left:8px">Save</button>
       <span id="trial-saved" style="margin-left:10px;font-size:.85rem;opacity:.8"></span>
     </div>
@@ -1053,9 +1057,42 @@ function renderCustomers() {
         <td>${c.last ? ago(c.last) : '—'}</td>
         <td><button class="btn btn-copy" data-customer="${esc(c.uid)}">Details</button></td>
       </tr>`).join('')
-    : `<tr><td colspan="6" class="empty">${q ? 'No customers match.' : 'No customers yet.'}</td></tr>`;
+    : `<tr><td colspan="6" class="empty">${q ? 'No customers with a stamp card match.' : 'No customers yet.'}</td></tr>`;
+  // Anyone without a card (a new sign-up, a vendor) — look them up by email.
+  if (q.includes('@')) {
+    document.getElementById('tbl-customers').insertAdjacentHTML('beforeend',
+      `<tr><td colspan="6" style="padding:12px"><button class="btn btn-copy" id="btn-find-account">🔎 Look up any account with ${esc(q)}</button></td></tr>`);
+  }
 }
 document.getElementById('customer-search').addEventListener('input', renderCustomers);
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('#btn-find-account');
+  if (!b) return;
+  const email = (document.getElementById('customer-search')?.value || '').trim();
+  b.disabled = true; b.textContent = 'Looking…';
+  try {
+    const r = (await httpsCallable(getFunctions(app, 'australia-southeast1'), 'ownerFindAccount')({ email })).data;
+    if (!r.found) { b.textContent = `No account uses ${email}.`; return; }
+    const d = (t) => t ? new Date(t).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    openDrawer(`
+      <h2>${esc(r.name || r.email)}</h2>
+      <div class="biz-meta">${esc(r.email)}</div>
+      <dl class="kv">
+        <dt>Account ID</dt><dd style="font-family:monospace;font-size:.8rem">${esc(r.uid)}</dd>
+        <dt>Email confirmed</dt><dd>${r.emailVerified ? 'Yes' : 'Not yet'}</dd>
+        <dt>Joined</dt><dd>${d(r.created)}</dd>
+        <dt>Last signed in</dt><dd>${d(r.lastSignIn)}</dd>
+        <dt>Stamp cards</dt><dd>${r.cards}</dd>
+        <dt>Rewards</dt><dd>${r.rewards}</dd>
+        <dt>Business account</dt><dd>${r.isVendor ? esc(r.businessName || 'Yes') : 'No'}</dd>
+        ${r.disabled ? '<dt>Status</dt><dd>Disabled</dd>' : ''}
+      </dl>`);
+    b.textContent = '🔎 Look up again';
+  } catch (err) {
+    console.error(err);
+    b.textContent = err && err.message ? err.message : "Couldn't look that up.";
+  } finally { b.disabled = false; }
+});
 
 function showCustomer(uid) {
   const c = customerList().find(x => x.uid === uid);
@@ -1233,15 +1270,18 @@ async function loadTrialSetting() {
     const snap = await getDoc(doc(db, 'config', 'billing'));
     const m = snap.exists() ? snap.data().trialMonths : 6;
     document.getElementById('trial-months').value = String([0, 1, 2, 3, 6, 12].includes(m) ? m : 6);
+    const tp = snap.exists() ? snap.data().trialPlan : 'standard';
+    document.getElementById('trial-plan').value = tp === 'starter' ? 'starter' : 'standard';
   } catch (e) { console.warn('trial setting', e); }
 }
 document.getElementById('btn-save-trial').addEventListener('click', async (e) => {
   const m = Number(document.getElementById('trial-months').value);
-  const label = m ? `${m} month${m === 1 ? '' : 's'}` : 'no free trial';
+  const trialPlan = document.getElementById('trial-plan').value === 'starter' ? 'starter' : 'standard';
+  const label = m ? `${m} month${m === 1 ? '' : 's'} of ${trialPlan === 'standard' ? 'Standard' : 'Starter'}` : 'no free trial';
   if (!confirm(`New vendors from now on will get ${label}. Existing vendors are not affected. Save?`)) return;
   e.target.disabled = true;
   try {
-    await setDoc(doc(db, 'config', 'billing'), { trialMonths: m, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(doc(db, 'config', 'billing'), { trialMonths: m, trialPlan, updatedAt: serverTimestamp() }, { merge: true });
     document.getElementById('trial-saved').textContent = `Saved — new vendors get ${label}.`;
     toast('Free trial setting saved.');
   } catch (err) {

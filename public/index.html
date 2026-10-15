@@ -254,9 +254,16 @@
     const errorMsg = document.getElementById('error-msg');
     const submitBtn = document.getElementById('submit-btn');
 
-    if (!bizName || !ownerName || !email || !phone || !bizType || !suburb) {
-      errorMsg.textContent = 'Please fill in all required fields.';
+    // Say which box is missing and mark it red (15 Oct).
+    const need = [['biz-name', 'Business name', bizName], ['owner-name', 'Your name', ownerName], ['email', 'Email address', email],
+                  ['phone', 'Phone number', phone], ['biz-type', 'Business type', bizType], ['suburb', 'Suburb', suburb]];
+    need.forEach(([id]) => { const el = document.getElementById(id); if (el) el.style.borderColor = ''; });
+    const missing = need.filter(([, , v]) => !v);
+    if (missing.length) {
+      missing.forEach(([id]) => { const el = document.getElementById(id); if (el) el.style.borderColor = '#FF3008'; });
+      errorMsg.textContent = `Please fill in: ${missing.map(([, label]) => label).join(', ')}.`;
       errorMsg.style.display = 'block';
+      const first = document.getElementById(missing[0][0]); if (first) first.focus();
       return;
     }
 

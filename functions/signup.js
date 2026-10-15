@@ -183,7 +183,38 @@ function build({ db, admin, REGION }) {
     return { deleted, skipped };
   });
 
-  return { submitVendorApplication, listUnconfirmedAccounts, deleteUnconfirmedAccounts };
+  // ── ownerFindAccount ──────────────────────────────────────
+  // The Customers list only shows people with a stamp card; this finds any
+  // account by email (a new sign-up, a vendor, someone asking for help).
+  // Owner only, read-only.
+  const ownerFindAccount = onCall({ region: REGION }, async (request) => {
+    await requireOwner(request);
+    const email = String((request.data && request.data.email) || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpsError("invalid-argument", "Type a full email address.");
+    let user;
+    try { user = await admin.auth().getUserByEmail(email); } catch (e) { return { found: false }; }
+    const [cardsSnap, rewardsSnap, vendorSnap] = await Promise.all([
+      db.collection("stampCards").where("customerUid", "==", user.uid).get(),
+      db.collection("rewards").where("customerUid", "==", user.uid).get(),
+      db.collection("vendors").doc(user.uid).get(),
+    ]);
+    return {
+      found: true,
+      uid: user.uid,
+      email: user.email,
+      name: user.displayName || "",
+      emailVerified: !!user.emailVerified,
+      disabled: !!user.disabled,
+      created: user.metadata && user.metadata.creationTime,
+      lastSignIn: user.metadata && user.metadata.lastSignInTime,
+      cards: cardsSnap.size,
+      rewards: rewardsSnap.size,
+      isVendor: vendorSnap.exists,
+      businessName: vendorSnap.exists ? vendorSnap.data().businessName || "" : "",
+    };
+  });
+
+  return { submitVendorApplication, listUnconfirmedAccounts, deleteUnconfirmedAccounts, ownerFindAccount };
 }
 
 module.exports = { build, vetApplication, STALE_DAYS, MIN_FILL_MS };

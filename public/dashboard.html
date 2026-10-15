@@ -720,6 +720,16 @@
     .content { padding: 20px 16px; }
     .topbar { padding: 14px 16px; }
   }
+  /* Plan & Billing (15 Oct) */
+  .plan-mine { border-color: var(--fire) !important; box-shadow: 0 0 0 1px var(--fire); }
+  .plan-tag { display:inline-block; font-size:.72rem; font-weight:800; color:#0D0500; background:#FFB830; border-radius:6px; padding:3px 8px; margin-bottom:8px; }
+  .send-btn.plan-alt { background: transparent; border: 1px solid rgba(255,255,255,0.2); box-shadow: none; }
+  .bill-card { margin: 0 0 16px; }
+  .pay-table { width:100%; border-collapse: collapse; font-size:.88rem; }
+  .pay-table th { text-align:left; color: var(--muted); font-weight:700; font-size:.75rem; padding:6px 4px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .pay-table td { padding:8px 4px; border-bottom:1px solid rgba(255,255,255,.05); }
+  .pay-table a { color: var(--fire); }
+  .pay-ok { color:#4ade80; font-weight:700; } .pay-bad { color:#ffb3a0; font-weight:700; }
 </style>
     <link rel="icon" href="/favicon.ico?v=2" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
@@ -818,8 +828,9 @@
             <!-- Filled from real stamp cards by loadStats(). No made-up numbers (testing, 15 Oct). -->
             <div class="bar-chart" id="visits-chart"></div>
             <div id="visits-chart-note" style="font-size:.78rem;color:var(--muted);margin-top:8px">Customers by the day of their latest visit, past 7 days.</div>
-            </div>
           </div>
+          <!-- One closing div too many here closed the Overview page early, so Recent
+               Activity and Top Customers showed on every page (testing, 15 Oct). -->
 
           <div class="stamp-card-preview">
             <div class="scp-biz" id="scp-biz-name">YOUR BUSINESS</div>
@@ -827,8 +838,8 @@
             <div class="stamps-grid" id="scp-stamps-grid"></div>
             <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
             <div class="scp-progress">
-              <span id="scp-count-text">0 stamps</span>
-              <span style="color:var(--fire)" id="scp-action-text">Join now!</span>
+              <span id="scp-count-text">—</span>
+              <span style="color:var(--fire)" id="scp-action-text"></span>
             </div>
           </div>
         </div>
@@ -864,20 +875,16 @@
       <div class="page" id="page-stampcard">
         <div class="grid-2">
           <div class="card">
-            <div class="card-header"><div class="card-title">Config Reward Criteria</div></div>
+            <div class="card-header"><div class="card-title">🎁 Your reward</div></div>
             <div class="form-group">
               <label class="form-label">Reward Description</label>
-              <input class="form-input" type="text" id="sc-reward" maxlength="40" placeholder="Free flat white · Free haircut · Free callout">
+              <input class="form-input" type="text" id="sc-reward" maxlength="40" placeholder="Free flat white · Free haircut · Free callout" oninput="renderCardPreview()">
               <div style="font-size:12px;opacity:.6;margin-top:6px">Up to 40 characters — customers see this on their card.</div>
             </div>
             <div class="form-group">
-              <label class="form-label">Total Stamps Required</label>
-              <select class="form-select" id="sc-goal">
-                <option value="5">5 Stamps</option>
-                <option value="8">8 Stamps</option>
-                <option value="10" selected>10 Stamps</option>
-                <option value="12">12 Stamps</option>
-              </select>
+              <label class="form-label">Stamps needed for the reward</label>
+              <input class="form-input" type="number" id="sc-goal" min="2" max="20" step="1" value="10" inputmode="numeric" style="max-width:140px" oninput="renderCardPreview()">
+              <div style="font-size:12px;opacity:.6;margin-top:6px">Any number from 2 to 20 — the same as in the app.</div>
             </div>
             <div class="form-group">
               <label class="form-label">Cards Expire After</label>
@@ -888,30 +895,21 @@
               </select>
               <div id="sc-expiry-hint" style="font-size:12px;opacity:.6;margin-top:6px">Cards never expire. An old offer stays live for anyone part-way through, for as long as they keep the card.</div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Stamp Icon Theme</label>
-              <select class="form-select">
-                <option>☕ Coffee</option>
-                <option>🍕 Pizza</option>
-                <option>🌟 Star</option>
-                <option>❤️ Heart</option>
-                <option>🎯 Target</option>
-              </select>
-            </div>
-            <button class="send-btn" onclick="saveStampCard()">💾 Save Card Policy</button>
+            <button class="send-btn" onclick="saveStampCard()">💾 Save</button>
           </div>
 
           <div>
             <div class="card" style="margin-bottom:20px">
-              <div class="card-header"><div class="card-title">👀 Dynamic View</div></div>
+              <div class="card-header"><div class="card-title">👀 What customers see</div></div>
+              <!-- Live: follows the reward and number as you type (was a fixed fake "6 of 10"). -->
               <div class="stamp-card-preview">
                 <div class="scp-biz" id="design-biz-name">YOUR BUSINESS</div>
-                <div class="scp-reward" id="design-reward-text">Buy 10, get 1 free</div>
+                <div class="scp-reward" id="design-reward-text">Free coffee</div>
                 <div class="stamps-grid" id="design-stamps-grid"></div>
-                <div class="progress-bar"><div class="progress-fill" style="width: 60%"></div></div>
+                <div class="progress-bar"><div class="progress-fill" id="design-progress" style="width:0%"></div></div>
                 <div class="scp-progress">
-                  <span>6 of 10 stamps completed</span>
-                  <span style="color:var(--fire)">4 more left!</span>
+                  <span id="design-count">Example: 1 of 10 stamps</span>
+                  <span style="color:var(--fire)" id="design-left">9 more for the reward</span>
                 </div>
               </div>
             </div>
@@ -937,6 +935,7 @@
 
       <div class="page" id="page-billing">
         <div class="bill-status" id="bill-status"><p>Loading…</p></div>
+        <div id="bill-details"></div>
         <div id="bill-plans">
           <div class="plan-grid" id="plan-grid"></div>
           <p class="bill-note">
@@ -980,12 +979,12 @@
                 <label class="form-label">Staff PIN</label>
                 <input class="form-input" type="text" id="settings-pin" readonly value="Loading…" style="letter-spacing:6px;font-weight:800;">
                 <small style="display:block;margin-top:6px;opacity:0.6;">Issued automatically and held on the server — staff enter it on a customer's phone. Keep it to staff only.</small>
-                <button class="btn" id="btn-new-pin" style="margin-top:10px;" onclick="regeneratePin()">Generate a new PIN</button>
+                <button class="send-btn" id="btn-new-pin" style="margin-top:10px;" onclick="regeneratePin()">🔄 Generate a new PIN</button>
                 <div style="margin-top:14px">
                   <label class="form-label" for="own-pin">Or choose your own PIN</label>
                   <div style="display:flex;gap:8px;align-items:center">
-                    <input class="form-input" id="own-pin" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 numbers" style="max-width:130px;letter-spacing:6px;font-weight:800" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)">
-                    <button class="btn" onclick="setOwnPin()">Use this PIN</button>
+                    <input class="form-input" id="own-pin" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" style="max-width:150px;letter-spacing:6px;font-weight:800;text-align:center" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)">
+                    <button class="send-btn" style="margin:0" onclick="setOwnPin()">Use this PIN</button>
                   </div>
                   <small style="display:block;margin-top:6px;opacity:0.6;">Easy ones like 1234, 0000 or 1212 aren't allowed — customers try those first.</small>
                 </div>
@@ -1099,13 +1098,11 @@
     // Show the vendor's REAL goal. This used to always show 10, so saving
     // just a new reward quietly reset every vendor's goal to 10.
     const goalSel = document.getElementById('sc-goal');
-    if (goalSel) {
-      const g = String(data.stampGoal || 10);
-      if (![...goalSel.options].some(o => o.value === g)) {
-        const o = document.createElement('option'); o.value = g; o.textContent = g + ' Stamps'; goalSel.appendChild(o);
-      }
-      goalSel.value = g;
-    }
+    if (goalSel) goalSel.value = String(Number(data.stampGoal) || 10);
+    const g0 = Number(data.stampGoal) || 10;
+    const ct = document.getElementById('scp-count-text'); if (ct) ct.textContent = `${g0} stamps for the reward`;
+    const at = document.getElementById('scp-action-text'); if (at) at.textContent = 'Live';
+    if (window.renderCardPreview) window.renderCardPreview();
     const expSel = document.getElementById('sc-expiry');
     if (expSel) {
       expSel.value = [6, 12].includes(Number(data.cardExpiryMonths)) ? String(data.cardExpiryMonths) : '0';
@@ -1241,12 +1238,31 @@ window.loadStats = async function() {
     });
   } catch(e) { console.error('Error parsing operational statistics:', e); }
 };
+  // Live preview of the card as the vendor types (15 Oct).
+  window.renderCardPreview = function () {
+    const reward = (document.getElementById('sc-reward')?.value || '').trim() || 'Your reward';
+    let goal = parseInt(document.getElementById('sc-goal')?.value, 10);
+    if (!Number.isInteger(goal)) goal = 10;
+    goal = Math.max(2, Math.min(20, goal));
+    const rt = document.getElementById('design-reward-text'); if (rt) rt.textContent = `${reward} after ${goal} stamps`;
+    const grid = document.getElementById('design-stamps-grid');
+    if (grid) grid.innerHTML = Array.from({ length: goal }, (_, i) => `<div class="stamp${i === 0 ? ' filled' : ''}">${i === 0 ? '🔥' : ''}</div>`).join('');
+    const pr = document.getElementById('design-progress'); if (pr) pr.style.width = `${Math.round(100 / goal)}%`;
+    const c = document.getElementById('design-count'); if (c) c.textContent = `Example: 1 of ${goal} stamps`;
+    const l = document.getElementById('design-left'); if (l) l.textContent = `${goal - 1} more for the reward`;
+  };
+
   // Save changes
   window.saveStampCard = async function() {
     if (!vendorUid) return;
     const reward = (document.getElementById('sc-reward')?.value || '').trim().slice(0, 40);
     const goalEl = document.getElementById('sc-goal');
-    const stampGoal = goalEl ? parseInt(goalEl.value) || 10 : 10;
+    const stampGoal = goalEl ? parseInt(goalEl.value, 10) : 10;
+    if (!Number.isInteger(stampGoal) || stampGoal < 2 || stampGoal > 20) {
+      alert('Stamps needed must be a whole number from 2 to 20.');
+      goalEl && goalEl.focus();
+      return;
+    }
     const expEl = document.getElementById('sc-expiry');
     const cardExpiryMonths = expEl ? parseInt(expEl.value) || 0 : 0;
 
@@ -1407,6 +1423,7 @@ window.loadStats = async function() {
   };
   const daysLeft = (ts) => ts && ts.toMillis ? Math.ceil((ts.toMillis() - Date.now()) / 86400000) : null;
   const callFn = (name) => httpsCallable(getFunctions(app, 'australia-southeast1'), name);
+  const esc2 = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   window.renderBilling = function(v) {
     v = v || {};
@@ -1420,8 +1437,8 @@ window.loadStats = async function() {
     let cls = 'good', title = '', body = '';
 
     if (hasSub && st === 'trialing') {
-      title = `${info ? info.name : 'Your'} plan — free trial`;
-      body = `Your free trial runs until <strong>${trialEnd}</strong>. Your first payment of NZ$${info ? info.price : ''} + GST is taken then — nothing before.`;
+      title = `Your plan: ${info ? info.name : ''} — free until ${trialEnd}`;
+      body = `Then NZ$${info ? info.price : ''} + GST a month. Nothing is charged before ${trialEnd}. Change plan, update your card or cancel any time in Manage billing.`;
     } else if (hasSub && st === 'active' && v.cancelAtPeriodEnd) {
       cls = 'warn'; title = `${info ? info.name : 'Your'} plan — cancelled`;
       body = `You've cancelled. Everything keeps working until <strong>${fmtDay(v.currentPeriodEnd)}</strong>. Changed your mind? Use Manage billing to undo it.`;
@@ -1433,8 +1450,8 @@ window.loadStats = async function() {
       body = 'We couldn\'t take your last payment. Please update your card in Manage billing so nothing stops working.';
     } else if (st === 'trialing' && left !== null && left > 0) {
       cls = left <= 14 ? 'warn' : 'good';
-      title = `Free trial — ${left} day${left === 1 ? '' : 's'} left`;
-      body = `Your free trial ends on <strong>${trialEnd}</strong>. Choose a plan below any time — you won't be charged until the trial ends.`;
+      title = `Free trial${info ? ` — ${info.name}` : ''} · ends ${trialEnd}`;
+      body = `You won't be charged anything until then (${left} day${left === 1 ? '' : 's'} left). Choose the plan you'd like <strong>after</strong> your trial — you can do it any time.`;
     } else if (v.paused) {
       cls = 'bad'; title = 'Stamping is paused';
       body = 'Your customers can\'t collect stamps right now because there\'s no plan. Their cards and stamps are safe — choose a plan below and everything switches back on straight away.';
@@ -1458,13 +1475,56 @@ window.loadStats = async function() {
     // Plan cards only when there's no live subscription — after that,
     // switching plans happens in Stripe's portal (Manage billing).
     document.getElementById('bill-plans').style.display = hasSub ? 'none' : 'block';
-    document.getElementById('plan-grid').innerHTML = Object.entries(PLAN_INFO).map(([id, p]) => `
-      <div class="plan-card">
+    // The plan they're trialling is marked and gets the main button (15 Oct):
+    // "Keep Standard after my trial" — not two identical "Choose" buttons.
+    const onTrial = st === 'trialing' && left !== null && left > 0;
+    const current = PLAN_INFO[v.plan] ? v.plan : null;
+    document.getElementById('plan-grid').innerHTML = Object.entries(PLAN_INFO).map(([id, p]) => {
+      const mine = id === current;
+      const label = onTrial
+        ? (mine ? `Keep ${p.name} after my trial` : `Switch to ${p.name} after my trial`)
+        : (mine ? `Choose ${p.name}` : `Choose ${p.name}`);
+      return `
+      <div class="plan-card${mine ? ' plan-mine' : ''}">
+        ${mine ? `<div class="plan-tag">✓ ${onTrial ? 'Your trial plan' : 'Your last plan'}</div>` : ''}
         <div class="plan-name">${p.name}</div>
         <div class="plan-price">NZ$${p.price}<small> + GST / month</small></div>
         <div class="plan-feat">${p.feats.map(f => '✓ ' + f).join('<br>')}</div>
-        <button class="send-btn" onclick="choosePlan('${id}', this)">Choose ${p.name}</button>
-      </div>`).join('');
+        <button class="send-btn${mine || !current ? '' : ' plan-alt'}" onclick="choosePlan('${id}', this)" data-label="${label}">${label}</button>
+      </div>`;
+    }).join('');
+
+    // With a plan: card on file + payments (from Stripe, read-only).
+    const det = document.getElementById('bill-details');
+    if (det) {
+      det.innerHTML = '';
+      if (v.stripeCustomerId) {
+        det.innerHTML = '<div class="card bill-card"><p style="color:var(--muted)">Loading payments…</p></div>';
+        callFn('listMyBilling')({}).then((res) => {
+          const { card, invoices } = res.data || {};
+          const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+          const money = (c, cur) => `${String(cur || 'nzd').toUpperCase() === 'NZD' ? 'NZ$' : ''}${(c / 100).toFixed(2)}`;
+          const day = (ms) => new Date(ms).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+          const cardLine = card ? `${esc(card.brand).replace(/^./, (x) => x.toUpperCase())} ending ${esc(card.last4)} · expires ${card.expMonth}/${String(card.expYear).slice(-2)}` : 'No card on file';
+          const real = (invoices || []).filter((i) => i.amount > 0);
+          const rows = real.length
+            ? real.map((i) => `<tr><td>${day(i.date)}</td><td>${money(i.amount, i.currency)}</td><td><span class="pay-${i.status === 'paid' ? 'ok' : 'bad'}">${i.status === 'paid' ? 'Paid' : i.status === 'open' ? 'Not paid yet' : esc(i.status)}</span></td><td>${i.pdf ? `<a href="${esc(i.pdf)}" target="_blank" rel="noopener">PDF</a>` : ''}</td></tr>`).join('')
+            : `<tr><td colspan="4" style="color:var(--muted)">No payments yet${v.trialEndsAt && st === 'trialing' ? ` — your first is on ${trialEnd}` : ''}.</td></tr>`;
+          det.innerHTML = `<div class="card bill-card">
+            <div class="card-header"><div class="card-title">💳 Card on file</div></div>
+            <p style="margin:0 0 6px">${cardLine}</p>
+            <p style="font-size:.8rem;color:var(--muted);margin:0">Change it in <strong>Manage billing</strong>.</p>
+          </div>
+          <div class="card bill-card">
+            <div class="card-header"><div class="card-title">🧾 Payments</div></div>
+            <table class="pay-table"><thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>Invoice</th></tr></thead><tbody>${rows}</tbody></table>
+          </div>`;
+        }).catch((e) => {
+          console.error(e);
+          det.innerHTML = `<div class="card bill-card"><p style="color:var(--muted)">${esc2(e && e.message && e.code !== 'functions/internal' ? e.message : "Couldn't load your payments just now.")}</p></div>`;
+        });
+      }
+    }
 
     const badge = document.getElementById('plan-badge');
     if (badge) {
@@ -1482,8 +1542,8 @@ window.loadStats = async function() {
       window.location.href = res.data.url;
     } catch (e) {
       console.error(e);
-      alert(e && e.message && e.code !== 'functions/internal' ? e.message : 'Could not open checkout. Please try again.');
-      if (btn) { btn.disabled = false; btn.textContent = 'Choose ' + (PLAN_INFO[plan] || {}).name; }
+      alert(e && e.message && e.code !== 'functions/internal' ? e.message : 'Could not open checkout. Please try again, or email support@stampd.co.nz if it keeps happening.');
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || ('Choose ' + (PLAN_INFO[plan] || {}).name); }
     }
   };
 
