@@ -190,7 +190,7 @@ function cardIsExpired(card, vendor, now = new Date()) {
 // stampCards directly (see firestore.rules).
 /** Throws unless `pin` is this business's staff PIN right now (fixed or
  *  rotating). Wrong guesses count towards the same 5-try lockout. */
-async function checkStaffPin(attemptKey, vendorId, vendor, pin) {
+async function checkStaffPin(attemptKey, vendorId, vendor, pin, atMs = Date.now()) {
   await checkRateLimit(attemptKey);
   if (!pin) throw new HttpsError("invalid-argument", "PIN required.");
   const secrets = await ensureSecret(vendorId);
@@ -200,7 +200,9 @@ async function checkStaffPin(attemptKey, vendorId, vendor, pin) {
   let ok;
   if (mode === "rotating") {
     const interval = vendor.pinIntervalSeconds || DEFAULT_INTERVAL_SECONDS;
-    ok = validPins(secrets.secret, interval, Math.floor(Date.now() / 1000)).includes(pin);
+    // `atMs` is when the PIN was typed — for a stamp saved offline that's
+    // earlier than now, and a rotating PIN proves that time.
+    ok = validPins(secrets.secret, interval, Math.floor(atMs / 1000)).includes(pin);
   } else {
     ok = pin === secrets.staticPin;
   }
@@ -229,6 +231,10 @@ exports.redeemReward = onCall({ region: REGION }, async (request) => {
   const pin = String(d.pin || "").trim();
   const scannedVendorId = String(d.scannedVendorId || "").trim();
   const claimId = String(d.claimId || "").replace(/[^\w-]/g, "").slice(0, 64);
+  // Claimed with no internet (scan only) and sent later: keep the real time.
+  const claimedAtRaw = Number(d.offlineAt);
+  const claimedOffline = Number.isFinite(claimedAtRaw) && claimedAtRaw > 0 &&
+    claimedAtRaw <= Date.now() + 2 * 60000 && claimedAtRaw >= Date.now() - 7 * DAY_MS;
   if (!rewardId) throw new HttpsError("invalid-argument", "Missing reward.");
   const ref = db.collection("rewards").doc(rewardId);
   const snap = await ref.get();
@@ -259,8 +265,10 @@ exports.redeemReward = onCall({ region: REGION }, async (request) => {
     }
     tx.update(ref, {
       status: "redeemed",
-      redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
-      redeemedBy: scannedVendorId ? "scan" : "staff-pin",
+      redeemedAt: claimedOffline
+        ? admin.firestore.Timestamp.fromMillis(claimedAtRaw)
+        : admin.firestore.FieldValue.serverTimestamp(),
+      redeemedBy: (scannedVendorId ? "scan" : "staff-pin") + (claimedOffline ? "-offline" : ""),
       ...(claimId ? { claimId } : {}),
     });
     return Date.now();
@@ -279,6 +287,19 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
   // same answer back instead of a second stamp or a "too soon" message.
   const requestId = String((request.data && request.data.requestId) || "").replace(/[^\w-]/g, "").slice(0, 64);
   if (!vendorId) throw new HttpsError("invalid-argument", "Missing vendor.");
+
+  // A stamp collected with no internet, sent when the phone is back online
+  // (agreed 15 Oct). Every rule is checked as at the moment it happened:
+  // the staff PIN is always required (even where scanning normally needs
+  // none), it must be no more than 7 days old, and the "how often" rule is
+  // measured from that moment — so it can't be used to stack stamps.
+  const offlineAtRaw = Number(request.data && request.data.offlineAt);
+  const offline = Number.isFinite(offlineAtRaw) && offlineAtRaw > 0;
+  const stampAt = offline ? offlineAtRaw : Date.now();
+  if (offline && (stampAt > Date.now() + 2 * 60000 || stampAt < Date.now() - 7 * DAY_MS)) {
+    throw new HttpsError("failed-precondition",
+      "This stamp was saved without internet more than 7 days ago, so it couldn't be added.", { reason: "offline-too-old" });
+  }
 
   const vendorSnap = await db.collection("vendors").doc(vendorId).get();
   if (!vendorSnap.exists) {
@@ -308,7 +329,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
       ? vendor.requiresPin !== false
       : true;
 
-  if (requirePin) await checkStaffPin(attemptKey, vendorId, vendor, pin);
+  if (requirePin || offline) await checkStaffPin(attemptKey, vendorId, vendor, pin, stampAt);
 
   // How often a customer can collect a stamp here (vendor's choice; once a
   // day by default). Checked again inside the transaction below.
@@ -334,7 +355,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
   });
   if (cardSnap.exists && replay(cardSnap.data())) return reply(replay(cardSnap.data()));
   if (cardSnap.exists) {
-    const wait = stampGapMessage(cardSnap.data(), vendor);
+    const wait = stampGapMessage(cardSnap.data(), vendor, new Date(stampAt));
     if (wait) throw new HttpsError("failed-precondition", wait, { reason: "stamp-gap" });
   }
 
@@ -349,7 +370,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
 
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(cardRef);
-    const nowDay = nzDayNumber(new Date());
+    const nowDay = nzDayNumber(new Date(stampAt));
     let stamps = 1;
     let totalLifetime = 1;
     let stampsToday = 1;
@@ -359,7 +380,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     if (snap.exists) {
       const card = snap.data();
       if (replay(card)) return replay(card);
-      const wait = stampGapMessage(card, vendor);
+      const wait = stampGapMessage(card, vendor, new Date(stampAt));
       if (wait) throw new HttpsError("failed-precondition", wait, { reason: "stamp-gap" }); // two taps at once
       expired = cardIsExpired(card, vendor);
       // An expired card starts again from nothing, on the current offer.
@@ -401,7 +422,10 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
           reward: rewardText,
           expired,
         },
-        lastStampAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastStampAt: offline
+          ? admin.firestore.Timestamp.fromMillis(stampAt)
+          : admin.firestore.FieldValue.serverTimestamp(),
+        ...(offline ? { lastOfflineStampAt: admin.firestore.Timestamp.fromMillis(stampAt) } : {}),
         // Cleared whenever the card's terms are reset to the current offer.
         ...(rewardEarned || expired || !snap.exists
           ? { keptAgainst: admin.firestore.FieldValue.delete() }
