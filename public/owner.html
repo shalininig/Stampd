@@ -528,8 +528,11 @@ function ago(ts) {
   if (!t) return '—';
   const days = Math.floor((Date.now() - t) / 86400000);
   if (days <= 0) {
-    const h = Math.floor((Date.now() - t) / 3600000);
-    return h <= 0 ? 'just now' : `${h}h ago`;
+    // Minutes under an hour — "just now" for 58 minutes looked wrong (15 Oct).
+    const mins = Math.floor((Date.now() - t) / 60000);
+    if (mins < 2) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    return `${Math.floor(mins / 60)}h ago`;
   }
   if (days === 1) return 'yesterday';
   if (days < 30) return `${days} days ago`;
@@ -684,7 +687,10 @@ function renderOverview() {
   const mrr = vendors.reduce((sum, v) =>
     v.subscriptionStatus === 'active' ? sum + (PLAN_PRICE[v.plan] || 0) : sum, 0);
   document.getElementById('s-mrr').textContent = '$' + mrr;
-  if (mrr > 0) document.getElementById('s-mrr-note').textContent = 'From active subscriptions';
+  const trialling = vendors.filter(v => v.subscriptionStatus === 'trialing').length;
+  document.getElementById('s-mrr-note').textContent = mrr > 0
+    ? 'From active subscriptions'
+    : (trialling ? `No paying vendors yet · ${trialling} on free trial` : 'No paying vendors yet');
 
   const badge = document.getElementById('badge-apps');
   if (pending.length) { badge.textContent = pending.length; badge.style.display = 'inline-block'; }
