@@ -31,6 +31,19 @@ const tryIt = async (f) => { try { await f(); return "ok"; } catch (e) { return 
   const ok = await redeem("amy", rid, "3051");
   check("right PIN: handed over", ok.ok && store.get(`rewards/${rid}`).status === "redeemed" && ok.reward === "Free coffee", ok);
   check("second time refused — can't be shown again", /already been handed over/.test(await tryIt(() => redeem("amy", rid, "3051"))));
+  // Scan to claim
+  await fns.issueStamp.run({ ...as("amy"), data: { vendorId: "cafe" } });
+  const earned = await fns.issueStamp.run({ ...as("amy"), data: { vendorId: "cafe" } });
+  check("earned result carries the reward id", !!earned.rewardId && earned.vendorId === "cafe", earned);
+  store.set("vendors/other", { businessName: "Other Place", requirePin: false });
+  const wrong = await tryIt(() => fns.redeemReward.run({ ...as("amy"), data: { rewardId: earned.rewardId, scannedVendorId: "other" } }));
+  check("scanning the wrong business: clear message, reward kept", /This code is for Other Place/.test(wrong) && store.get(`rewards/${earned.rewardId}`).status === "unredeemed", wrong);
+  const c1 = await fns.redeemReward.run({ ...as("amy"), data: { rewardId: earned.rewardId, scannedVendorId: "cafe", claimId: "c-1" } });
+  check("scanning the right business claims it, no PIN", c1.ok && store.get(`rewards/${earned.rewardId}`).redeemedBy === "scan", c1);
+  const c2 = await fns.redeemReward.run({ ...as("amy"), data: { rewardId: earned.rewardId, scannedVendorId: "cafe", claimId: "c-1" } });
+  check("retry of the same claim (dropped connection) answers ok again", c2.ok === true);
+  check("a new claim attempt is refused", /already been handed over/.test(await tryIt(() => fns.redeemReward.run({ ...as("amy"), data: { rewardId: earned.rewardId, scannedVendorId: "cafe", claimId: "c-2" } }))));
+  check("claiming didn't add a stamp", store.get("stampCards/amy_cafe").stamps === 0, store.get("stampCards/amy_cafe"));
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
   process.exit(failures ? 1 : 0);
 })().catch((e) => { console.error("CRASH", e); process.exit(2); });

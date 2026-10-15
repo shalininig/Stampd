@@ -212,32 +212,60 @@ async function checkStaffPin(attemptKey, vendorId, vendor, pin) {
 }
 
 // ── redeemReward ─────────────────────────────────────────────
-// Handing a reward over happens at the counter, on the customer's own phone:
-// they open the reward, staff type the PIN, and it's marked handed over there
-// and then — so it can't be shown again on the next visit. Always needs the
-// PIN, whatever the stamping setting, because it's the staff saying "given".
+// Handing a reward over at the counter, on the customer's own phone.
+//  • Usually by scanning the business's counter QR (or typing its code):
+//    `scannedVendorId` must be the business the reward belongs to. Scanning
+//    a photo at home only uses up your own reward, so there's nothing to gain.
+//  • Fallback when the camera won't scan: staff type the PIN.
+// Either way it's marked handed over there and then, so it can't be shown
+// again. Claiming never earns a stamp and isn't limited by "how often".
+// `claimId` makes a retry after a dropped connection safe: the same claim
+// answered again, not "already handed over".
 exports.redeemReward = onCall({ region: REGION }, async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Please sign in.");
-  const rewardId = String((request.data && request.data.rewardId) || "").trim();
-  const pin = String((request.data && request.data.pin) || "").trim();
+  const d = request.data || {};
+  const rewardId = String(d.rewardId || "").trim();
+  const pin = String(d.pin || "").trim();
+  const scannedVendorId = String(d.scannedVendorId || "").trim();
+  const claimId = String(d.claimId || "").replace(/[^\w-]/g, "").slice(0, 64);
   if (!rewardId) throw new HttpsError("invalid-argument", "Missing reward.");
   const ref = db.collection("rewards").doc(rewardId);
   const snap = await ref.get();
   if (!snap.exists || snap.data().customerUid !== uid) throw new HttpsError("not-found", "That reward isn't on this account.");
   const r = snap.data();
-  const vendorSnap = await db.collection("vendors").doc(r.vendorId).get();
-  if (!vendorSnap.exists) throw new HttpsError("not-found", "That business isn't on Stampd any more.");
-  await checkStaffPin(`${uid}_${r.vendorId}`, r.vendorId, vendorSnap.data(), pin);
+  const done = (at) => ({ ok: true, reward: r.reward, vendorName: r.vendorName, redeemedAt: at });
+  if (r.status === "redeemed" && claimId && r.claimId === claimId) {
+    return done(r.redeemedAt && r.redeemedAt.toMillis ? r.redeemedAt.toMillis() : Date.now());
+  }
+
+  if (scannedVendorId) {
+    if (scannedVendorId !== r.vendorId) {
+      const other = await db.collection("vendors").doc(scannedVendorId).get();
+      const name = other.exists ? other.data().businessName || "another business" : "another business";
+      throw new HttpsError("failed-precondition",
+        `This code is for ${name} — your ${r.reward} is at ${r.vendorName}.`, { reason: "wrong-business" });
+    }
+  } else {
+    const vendorSnap = await db.collection("vendors").doc(r.vendorId).get();
+    if (!vendorSnap.exists) throw new HttpsError("not-found", "That business isn't on Stampd any more.");
+    await checkStaffPin(`${uid}_${r.vendorId}`, r.vendorId, vendorSnap.data(), pin);
+  }
+
   const at = await db.runTransaction(async (tx) => {
     const cur = await tx.get(ref);
     if (cur.data().status === "redeemed") {
       throw new HttpsError("failed-precondition", "This reward has already been handed over.", { reason: "already-redeemed" });
     }
-    tx.update(ref, { status: "redeemed", redeemedAt: admin.firestore.FieldValue.serverTimestamp(), redeemedBy: "staff-pin" });
+    tx.update(ref, {
+      status: "redeemed",
+      redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+      redeemedBy: scannedVendorId ? "scan" : "staff-pin",
+      ...(claimId ? { claimId } : {}),
+    });
     return Date.now();
   });
-  return { ok: true, reward: r.reward, vendorName: r.vendorName, redeemedAt: at };
+  return done(at);
 });
 
 exports.issueStamp = onCall({ region: REGION }, async (request) => {
@@ -295,6 +323,9 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     stampGoal: r.stampGoal,
     reward: r.reward,
     rewardEarned: r.rewardEarned,
+    // So "Claim now" on the earned screen can hand it over straight away.
+    rewardId: r.rewardId || null,
+    vendorId,
     // True when an old card had lapsed and this stamp started a new one.
     cardRestarted: r.expired,
     // What this vendor calls what they count ("visits", "cuts", ...), so the
@@ -346,6 +377,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     const stampsAfter = rewardEarned ? 0 : stamps;
     // Once a card completes, the next one starts on whatever is current.
     const nextTerms = rewardEarned ? cur : terms;
+    const rewardRef = rewardEarned ? db.collection("rewards").doc() : null;
 
     tx.set(
       cardRef,
@@ -364,6 +396,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
         lastResult: {
           stamps: rewardEarned ? stampGoal : stampsAfter,
           rewardEarned,
+          rewardId: rewardRef ? rewardRef.id : null,
           stampGoal,
           reward: rewardText,
           expired,
@@ -386,7 +419,6 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     // Record the reward so it survives the card resetting to zero.
     // This is what the vendor redeems against.
     if (rewardEarned) {
-      const rewardRef = db.collection("rewards").doc();
       tx.set(rewardRef, {
         customerUid: uid,
         customerName,
@@ -402,6 +434,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     return {
       stamps: rewardEarned ? stampGoal : stampsAfter,
       rewardEarned,
+      rewardId: rewardRef ? rewardRef.id : null,
       stampGoal,
       reward: rewardText,
       expired,
