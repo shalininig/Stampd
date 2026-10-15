@@ -975,6 +975,14 @@
                 <input class="form-input" type="text" id="settings-pin" readonly value="Loading…" style="letter-spacing:6px;font-weight:800;">
                 <small style="display:block;margin-top:6px;opacity:0.6;">Issued automatically and held on the server — staff enter it on a customer's phone. Keep it to staff only.</small>
                 <button class="btn" id="btn-new-pin" style="margin-top:10px;" onclick="regeneratePin()">Generate a new PIN</button>
+                <div style="margin-top:14px">
+                  <label class="form-label" for="own-pin">Or choose your own PIN</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input class="form-input" id="own-pin" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 numbers" style="max-width:130px;letter-spacing:6px;font-weight:800" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)">
+                    <button class="btn" onclick="setOwnPin()">Use this PIN</button>
+                  </div>
+                  <small style="display:block;margin-top:6px;opacity:0.6;">Easy ones like 1234, 0000 or 1212 aren't allowed — customers try those first.</small>
+                </div>
               </div>
               <button class="send-btn" onclick="saveBusinessDetails()">💾 Save Details</button>
             </div>
@@ -1321,6 +1329,26 @@ window.loadStats = async function() {
     } catch (e) {
       console.error(e);
       alert('Could not issue a new PIN. Please try again.');
+    }
+  };
+
+  window.setOwnPin = async function() {
+    const box = document.getElementById('own-pin');
+    const pin = (box?.value || '').trim();
+    if (!/^\d{4}$/.test(pin)) { alert('Please type exactly 4 numbers.'); return; }
+    if (!confirm(`Use ${pin} as your staff PIN? The current one stops working straight away.`)) return;
+    try {
+      const call = httpsCallable(getFunctions(app, 'australia-southeast1'), 'setOwnStaticPin');
+      const res = await call({ pin });
+      const el = document.getElementById('settings-pin');
+      if (el) el.value = res.data.staticPin;
+      if (box) box.value = '';
+      alert(res.data.switchedToFixed
+        ? '✅ PIN saved. Your rotating PIN is now off, so this fixed PIN is the one to use. Tell your staff.'
+        : '✅ PIN saved. Tell your staff.');
+    } catch (e) {
+      console.error(e);
+      alert(e && e.code === 'functions/invalid-argument' ? e.message : 'Could not save the PIN. Please try again.');
     }
   };
 

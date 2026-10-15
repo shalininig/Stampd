@@ -13,6 +13,7 @@ const {
   validPins,
   newSecret,
   newStaticPin,
+  weakPinReason,
 } = require("./pin");
 
 admin.initializeApp();
@@ -497,6 +498,29 @@ exports.regenerateStaticPin = onCall({ region: REGION }, async (request) => {
     { merge: true }
   );
   return { staticPin };
+});
+
+// ── setOwnStaticPin ──────────────────────────────────────────
+// A business can choose its own fixed PIN (easier for staff to remember).
+// Obvious ones (1234, 0000, 1212…) are refused. Choosing one switches a
+// rotating PIN back to fixed, otherwise the chosen PIN would never work.
+exports.setOwnStaticPin = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Please sign in.");
+  const vendorRef = db.collection("vendors").doc(uid);
+  const vendorSnap = await vendorRef.get();
+  if (!vendorSnap.exists) throw new HttpsError("permission-denied", "Not a vendor account.");
+  const pin = String((request.data && request.data.pin) || "").trim();
+  const weak = weakPinReason(pin);
+  if (weak) throw new HttpsError("invalid-argument", weak);
+  await ensureSecret(uid);
+  await db.collection("vendorSecrets").doc(uid).set(
+    { staticPin: pin, staticPinChangedAt: admin.firestore.FieldValue.serverTimestamp(), staticPinChosen: true },
+    { merge: true }
+  );
+  const switched = vendorSnap.data().pinMode === "rotating";
+  if (switched) await vendorRef.set({ pinMode: "static" }, { merge: true });
+  return { staticPin: pin, switchedToFixed: switched };
 });
 
 // ── onVendorCreated ──────────────────────────────────────────

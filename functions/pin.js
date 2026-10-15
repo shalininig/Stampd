@@ -43,6 +43,20 @@ function newSecret() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+/** Why a PIN a business chose for itself is too easy to guess, or null if
+ *  it's fine. Customers try the obvious ones first. */
+function weakPinReason(pin) {
+  if (!/^\d{4}$/.test(String(pin || ""))) return "The PIN must be exactly 4 numbers.";
+  const d = pin.split("").map(Number);
+  if (d.every((x) => x === d[0])) return "All the same number is too easy to guess.";
+  const up = d.every((x, i) => i === 0 || x === d[i - 1] + 1);
+  const down = d.every((x, i) => i === 0 || x === d[i - 1] - 1);
+  if (up || down) return "Numbers in order (like 1234) are too easy to guess.";
+  if (d[0] === d[2] && d[1] === d[3]) return "A repeating pair (like 1212) is too easy to guess.";
+  if (["2580", "0852", "1004", "1122", "1313", "2000", "2468", "1357"].includes(pin)) return "That one is a very common PIN. Please choose another.";
+  return null;
+}
+
 function newStaticPin() {
   // Avoid 0000 and obvious sequences.
   const banned = new Set(["0000", "1111", "2222", "3333", "4444", "5555",
@@ -61,4 +75,5 @@ module.exports = {
   validPins,
   newSecret,
   newStaticPin,
+  weakPinReason,
 };
