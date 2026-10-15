@@ -188,6 +188,58 @@ function cardIsExpired(card, vendor, now = new Date()) {
 // ── issueStamp ───────────────────────────────────────────────
 // The ONLY way a stamp is created. Clients can no longer write
 // stampCards directly (see firestore.rules).
+/** Throws unless `pin` is this business's staff PIN right now (fixed or
+ *  rotating). Wrong guesses count towards the same 5-try lockout. */
+async function checkStaffPin(attemptKey, vendorId, vendor, pin) {
+  await checkRateLimit(attemptKey);
+  if (!pin) throw new HttpsError("invalid-argument", "PIN required.");
+  const secrets = await ensureSecret(vendorId);
+  // A vendor who drops off the paid plan silently falls back to the
+  // fixed PIN — the setting alone can't unlock rotation.
+  const mode = vendor.pinMode === "rotating" && canRotate(vendor) ? "rotating" : "static";
+  let ok;
+  if (mode === "rotating") {
+    const interval = vendor.pinIntervalSeconds || DEFAULT_INTERVAL_SECONDS;
+    ok = validPins(secrets.secret, interval, Math.floor(Date.now() / 1000)).includes(pin);
+  } else {
+    ok = pin === secrets.staticPin;
+  }
+  if (!ok) {
+    await recordFailure(attemptKey);
+    throw new HttpsError("permission-denied", "Incorrect PIN.");
+  }
+  await clearFailures(attemptKey);
+}
+
+// ── redeemReward ─────────────────────────────────────────────
+// Handing a reward over happens at the counter, on the customer's own phone:
+// they open the reward, staff type the PIN, and it's marked handed over there
+// and then — so it can't be shown again on the next visit. Always needs the
+// PIN, whatever the stamping setting, because it's the staff saying "given".
+exports.redeemReward = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Please sign in.");
+  const rewardId = String((request.data && request.data.rewardId) || "").trim();
+  const pin = String((request.data && request.data.pin) || "").trim();
+  if (!rewardId) throw new HttpsError("invalid-argument", "Missing reward.");
+  const ref = db.collection("rewards").doc(rewardId);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data().customerUid !== uid) throw new HttpsError("not-found", "That reward isn't on this account.");
+  const r = snap.data();
+  const vendorSnap = await db.collection("vendors").doc(r.vendorId).get();
+  if (!vendorSnap.exists) throw new HttpsError("not-found", "That business isn't on Stampd any more.");
+  await checkStaffPin(`${uid}_${r.vendorId}`, r.vendorId, vendorSnap.data(), pin);
+  const at = await db.runTransaction(async (tx) => {
+    const cur = await tx.get(ref);
+    if (cur.data().status === "redeemed") {
+      throw new HttpsError("failed-precondition", "This reward has already been handed over.", { reason: "already-redeemed" });
+    }
+    tx.update(ref, { status: "redeemed", redeemedAt: admin.firestore.FieldValue.serverTimestamp(), redeemedBy: "staff-pin" });
+    return Date.now();
+  });
+  return { ok: true, reward: r.reward, vendorName: r.vendorName, redeemedAt: at };
+});
+
 exports.issueStamp = onCall({ region: REGION }, async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Please sign in.");
@@ -228,27 +280,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
       ? vendor.requiresPin !== false
       : true;
 
-  if (requirePin) {
-    await checkRateLimit(attemptKey);
-    if (!pin) throw new HttpsError("invalid-argument", "PIN required.");
-
-    const secrets = await ensureSecret(vendorId);
-    // A vendor who drops off the paid plan silently falls back to the
-    // fixed PIN — the setting alone can't unlock rotation.
-    const mode = vendor.pinMode === "rotating" && canRotate(vendor) ? "rotating" : "static";
-    let ok;
-    if (mode === "rotating") {
-      const interval = vendor.pinIntervalSeconds || DEFAULT_INTERVAL_SECONDS;
-      ok = validPins(secrets.secret, interval, Math.floor(Date.now() / 1000)).includes(pin);
-    } else {
-      ok = pin === secrets.staticPin;
-    }
-    if (!ok) {
-      await recordFailure(attemptKey);
-      throw new HttpsError("permission-denied", "Incorrect PIN.");
-    }
-    await clearFailures(attemptKey);
-  }
+  if (requirePin) await checkStaffPin(attemptKey, vendorId, vendor, pin);
 
   // How often a customer can collect a stamp here (vendor's choice; once a
   // day by default). Checked again inside the transaction below.

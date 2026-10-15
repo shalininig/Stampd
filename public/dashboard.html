@@ -804,7 +804,7 @@
             <div class="stat-change">Loading…</div>
           </div>
           <div class="stat-card blue" id="stat-rewards">
-            <div class="stat-label">Rewards Issued</div>
+            <div class="stat-label">Rewards Waiting</div>
             <div class="stat-value">0</div>
             <div class="stat-change">All time</div>
           </div>
@@ -831,6 +831,12 @@
               <span style="color:var(--fire)" id="scp-action-text">Join now!</span>
             </div>
           </div>
+        </div>
+
+        <div class="card" id="rewards-card" style="margin-bottom:20px;display:none">
+          <div class="card-header"><div class="card-title">⭐ Rewards waiting to be handed over</div></div>
+          <div id="rewards-list"></div>
+          <p style="font-size:.8rem;opacity:.6;margin:10px 0 0;line-height:1.5">Usually staff hand these over on the customer's phone: the customer taps the reward, staff type the PIN. Use the button here if that didn't happen.</p>
         </div>
 
         <div class="grid-2">
@@ -1209,15 +1215,20 @@ window.loadStats = async function() {
     renderVisitsChart(days);
     renderTopCustomers(people);
     // Real rewards, not lifetime stamps divided by today's goal.
+    let rewardsHanded = 0;
     try {
       const r = await getDocs(query(collection(db, 'rewards'), where('vendorId', '==', vendorUid)));
-      rewardsIssued = r.size;
-    } catch (e) {}
+      const all = r.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const waiting = all.filter((x) => x.status !== 'redeemed');
+      rewardsIssued = waiting.length;
+      rewardsHanded = all.length - waiting.length;
+      window.renderWaitingRewards && window.renderWaitingRewards(waiting);
+    } catch (e) { console.error(e); }
     const statCards = {
       'stat-customers': { val: totalCustomers, change: 'Total customers tracked' },
       'stat-today': { val: visitedToday, change: 'Visited today' },
       'stat-week': { val: activeThisWeek, change: 'Active this week' },
-      'stat-rewards': { val: rewardsIssued, change: 'All time' },
+      'stat-rewards': { val: rewardsIssued, change: `${rewardsHanded} handed over so far` },
     };
     Object.entries(statCards).forEach(([id, info]) => {
       const card = document.getElementById(id);
@@ -1331,6 +1342,37 @@ window.loadStats = async function() {
       alert('Could not issue a new PIN. Please try again.');
     }
   };
+
+  // Rewards earned and not yet handed over — the vendor's back-up for when
+  // staff didn't do it on the customer's phone.
+  window.renderWaitingRewards = function (list) {
+    const card = document.getElementById('rewards-card');
+    const box = document.getElementById('rewards-list');
+    if (!card || !box) return;
+    card.style.display = list.length ? '' : 'none';
+    const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const when = (ts) => ts && ts.toDate ? ts.toDate().toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' }) : '';
+    list.sort((a, b) => (a.earnedAt?.toMillis?.() || 0) - (b.earnedAt?.toMillis?.() || 0));
+    box.innerHTML = list.map((r) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <div style="flex:1"><strong>${esc(r.customerName || 'Customer')}</strong> — ${esc(r.reward)}
+          <div style="font-size:.8rem;opacity:.6">Earned ${esc(when(r.earnedAt))}</div></div>
+        <button class="btn" data-handover="${esc(r.id)}" data-who="${esc(r.customerName || 'this customer')}" data-what="${esc(r.reward)}">Mark handed over</button>
+      </div>`).join('');
+  };
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest && e.target.closest('[data-handover]');
+    if (!b) return;
+    if (!confirm(`Hand over "${b.dataset.what}" to ${b.dataset.who}? This can't be undone.`)) return;
+    b.disabled = true;
+    try {
+      await updateDoc(doc(db, 'rewards', b.dataset.handover), { status: 'redeemed', redeemedAt: serverTimestamp() });
+      b.closest('div[style]').remove();
+      const left = document.querySelectorAll('[data-handover]').length;
+      if (!left) document.getElementById('rewards-card').style.display = 'none';
+      const v = document.querySelector('#stat-rewards .stat-value'); if (v) v.textContent = left;
+    } catch (err) { console.error(err); b.disabled = false; alert("Couldn't mark it handed over. Check your connection and try again."); }
+  });
 
   window.setOwnPin = async function() {
     const box = document.getElementById('own-pin');
