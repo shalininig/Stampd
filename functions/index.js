@@ -194,6 +194,10 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
 
   const vendorId = String((request.data && request.data.vendorId) || "").trim();
   const pin = String((request.data && request.data.pin) || "").trim();
+  // The app sends one id per tap and retries with the same id if the
+  // connection drops. A repeat of a request that already worked gets the
+  // same answer back instead of a second stamp or a "too soon" message.
+  const requestId = String((request.data && request.data.requestId) || "").replace(/[^\w-]/g, "").slice(0, 64);
   if (!vendorId) throw new HttpsError("invalid-argument", "Missing vendor.");
 
   const vendorSnap = await db.collection("vendors").doc(vendorId).get();
@@ -251,6 +255,21 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
   const cardId = `${uid}_${vendorId}`;
   const cardRef = db.collection("stampCards").doc(cardId);
   const cardSnap = await cardRef.get();
+  const replay = (card) =>
+    requestId && card && card.lastRequestId === requestId && card.lastResult ? card.lastResult : null;
+  const reply = (r) => ({
+    businessName: vendor.businessName || "Business",
+    stamps: r.stamps,
+    stampGoal: r.stampGoal,
+    reward: r.reward,
+    rewardEarned: r.rewardEarned,
+    // True when an old card had lapsed and this stamp started a new one.
+    cardRestarted: r.expired,
+    // What this vendor calls what they count ("visits", "cuts", ...), so the
+    // success screen can say "3 of 5 visits" rather than always "stamps".
+    countWord: vendor.countWord || "stamps",
+  });
+  if (cardSnap.exists && replay(cardSnap.data())) return reply(replay(cardSnap.data()));
   if (cardSnap.exists) {
     const wait = stampGapMessage(cardSnap.data(), vendor);
     if (wait) throw new HttpsError("failed-precondition", wait, { reason: "stamp-gap" });
@@ -276,6 +295,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
 
     if (snap.exists) {
       const card = snap.data();
+      if (replay(card)) return replay(card);
       const wait = stampGapMessage(card, vendor);
       if (wait) throw new HttpsError("failed-precondition", wait, { reason: "stamp-gap" }); // two taps at once
       expired = cardIsExpired(card, vendor);
@@ -308,6 +328,14 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
         reward: nextTerms.reward,
         totalLifetimeStamps: totalLifetime,
         stampsToday,
+        lastRequestId: requestId || admin.firestore.FieldValue.delete(),
+        lastResult: {
+          stamps: rewardEarned ? stampGoal : stampsAfter,
+          rewardEarned,
+          stampGoal,
+          reward: rewardText,
+          expired,
+        },
         lastStampAt: admin.firestore.FieldValue.serverTimestamp(),
         // Cleared whenever the card's terms are reset to the current offer.
         ...(rewardEarned || expired || !snap.exists
@@ -348,18 +376,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
     };
   });
 
-  return {
-    businessName: vendor.businessName || "Business",
-    stamps: result.stamps,
-    stampGoal: result.stampGoal,
-    reward: result.reward,
-    rewardEarned: result.rewardEarned,
-    // True when an old card had lapsed and this stamp started a new one.
-    cardRestarted: result.expired,
-    // What this vendor calls what they count ("visits", "cuts", ...), so the
-    // success screen can say "3 of 5 visits" rather than always "stamps".
-    countWord: vendor.countWord || "stamps",
-  };
+  return reply(result);
 });
 
 // ── chooseOffer ──────────────────────────────────────────────

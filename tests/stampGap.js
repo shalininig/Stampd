@@ -44,6 +44,13 @@ async function tryStamp(gap, lastAgoMs, uid) {
   check("3 days: blocked after 1 day", (await tryStamp(72, 25 * H, "j")) !== "ok");
   check("unknown value falls back to once a day", /ready tomorrow/.test(await tryStamp(5, 60000, "k")));
   for (const [g,a] of [[2,H],[24,60000],[48,60000],[72,60000]]) console.log("SAMPLE", g, "=>", await tryStamp(g, a, "s"+g));
+  // Retry after a dropped connection: same request id → same answer, one stamp.
+  store.set("vendors/v_r", { businessName: "Cafe", stampGoal: 10, reward: "Coffee", requirePin: false });
+  const first = await fns.issueStamp.run({ ...as("r"), data: { vendorId: "v_r", requestId: "tap-1" } });
+  const again = await fns.issueStamp.run({ ...as("r"), data: { vendorId: "v_r", requestId: "tap-1" } });
+  check("retry with the same id: same success, no second stamp", first.stamps === 1 && again.stamps === 1 && store.get("stampCards/r_v_r").totalLifetimeStamps === 1, { first, again });
+  let m2; try { await fns.issueStamp.run({ ...as("r"), data: { vendorId: "v_r", requestId: "tap-2" } }); m2 = "ok"; } catch (e) { m2 = e.message; }
+  check("a NEW tap still gets the friendly 'too soon' message", /ready tomorrow/.test(m2), m2);
   check("no harsh wording", !/already collected|Come back/i.test(m), m);
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
   process.exit(failures ? 1 : 0);
