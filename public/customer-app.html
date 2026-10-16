@@ -549,6 +549,12 @@ body {
       window.location.href = 'login.html';
       return;
     }
+    // One email, one role (17 Oct): a business account belongs on its
+    // dashboard, never on the customer pages.
+    try {
+      const v = await getDoc(doc(db, 'vendors', user.uid));
+      if (v.exists()) { window.location.replace('dashboard.html'); return; }
+    } catch (e) { /* can't tell (offline) — stay put */ }
 
     const firstName = (user.displayName || user.email.split('@')[0]).split(' ')[0];
     const initial = firstName[0].toUpperCase();

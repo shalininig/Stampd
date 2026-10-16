@@ -392,6 +392,11 @@ body {
     setLoading('btn-signin', true, 'Sign In →');
     try {
       const cred = await signInWithEmailAndPassword(auth, email, pass);
+      // A business that signs in here goes to its dashboard (one email, one role).
+      try {
+        const v = await getDoc(doc(db, 'vendors', cred.user.uid));
+        if (v.exists()) { window.location.replace('dashboard.html'); return; }
+      } catch (e) { /* carry on as a customer */ }
       showSuccess(cred.user.displayName || email.split('@')[0]);
     } catch (e) {
       setLoading('btn-signin', false, 'Sign In →');
