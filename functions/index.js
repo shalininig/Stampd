@@ -364,9 +364,13 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
   // The vendor screens show who the customer is. Nothing was writing it, so
   // every card and reward read back as an anonymous "Customer". Take it from
   // the auth token, which is the only trustworthy source here.
+  // Privacy (17 Oct): the customer's EMAIL is not written to cards or
+  // rewards — businesses can read those. Only the name goes there. The
+  // email is kept on users/{uid}, which only the customer and the owner
+  // can read (owner console search).
   const tok = (request.auth && request.auth.token) || {};
   const customerName = String(tok.name || (tok.email ? String(tok.email).split("@")[0] : "") || "Customer").slice(0, 60);
-  const customerEmail = String(tok.email || "").slice(0, 120);
+  rememberEmailForOwner(uid, tok.email);
 
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(cardRef);
@@ -406,7 +410,7 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
         vendorId,
         customerUid: uid,
         customerName,
-        customerEmail,
+        customerEmail: admin.firestore.FieldValue.delete(), // clears older cards
         vendorName: vendor.businessName || "Business",
         stamps: stampsAfter,
         stampGoal: nextTerms.stampGoal,
@@ -446,7 +450,6 @@ exports.issueStamp = onCall({ region: REGION }, async (request) => {
       tx.set(rewardRef, {
         customerUid: uid,
         customerName,
-        customerEmail,
         vendorId,
         vendorName: vendor.businessName || "Business",
         reward: rewardText,
@@ -489,7 +492,6 @@ exports.chooseOffer = onCall({ region: REGION }, async (request) => {
 
   const tok = (request.auth && request.auth.token) || {};
   const customerName = String(tok.name || (tok.email ? String(tok.email).split("@")[0] : "") || "Customer").slice(0, 60);
-  const customerEmail = String(tok.email || "").slice(0, 120);
 
   const cardRef = db.collection("stampCards").doc(`${uid}_${vendorId}`);
   return db.runTransaction(async (tx) => {
@@ -513,7 +515,6 @@ exports.chooseOffer = onCall({ region: REGION }, async (request) => {
       tx.set(db.collection("rewards").doc(), {
         customerUid: uid,
         customerName,
-        customerEmail,
         vendorId,
         vendorName: vendor.businessName || "Business",
         reward: cur.reward,
@@ -753,8 +754,39 @@ exports.dailyCustomerReminders = onSchedule(
     }
     console.log(`[dailyCustomerReminders] reward reminders sent: ${sent}`);
     await cardExpiryWarnings();
+    await scrubCustomerEmails().catch((e) => console.error("[scrubCustomerEmails]", e));
   }
 );
+
+// ── Customer emails: owner only ───────────────────────────────
+// users/{uid} is readable by the customer and the owner only (see
+// firestore.rules), so that is where the owner console finds emails.
+function rememberEmailForOwner(uid, email) {
+  const e = String(email || "").slice(0, 120);
+  if (!uid || !e) return;
+  db.collection("users").doc(uid).set({ email: e }, { merge: true }).catch(() => {});
+}
+
+// Cards and rewards written before 17 Oct carry customerEmail, which the
+// business can read. Move it to users/{uid} and remove it. Runs inside the
+// daily job; once everything is clean the queries return nothing.
+async function scrubCustomerEmails() {
+  let cleaned = 0;
+  for (const name of ["stampCards", "rewards"]) {
+    const snap = await db.collection(name).where("customerEmail", ">", "").limit(400).get();
+    for (const d of snap.docs) {
+      const x = d.data();
+      if (x.customerUid && x.customerEmail) {
+        await db.collection("users").doc(x.customerUid).set({ email: x.customerEmail }, { merge: true });
+      }
+      await d.ref.update({ customerEmail: admin.firestore.FieldValue.delete() });
+      cleaned++;
+    }
+  }
+  console.log(`[scrubCustomerEmails] removed from ${cleaned} documents`);
+  return cleaned;
+}
+exports._scrubCustomerEmails = scrubCustomerEmails; // for tests
 
 // Card-expiry heads-up: once per card, 3 weeks before it lapses.
 // Called from dailyCustomerReminders.

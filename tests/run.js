@@ -133,6 +133,27 @@ const rewardsFor = (uid) => [...store].filter(([p, d]) => p.startsWith("rewards/
   try { await choose("zed", "cafe", "switch"); check("no card → not-found", false); }
   catch (e) { check("no card → not-found", /not-found/.test(e.code || e.message), e.message); }
 
+  // 16. Privacy (17 Oct): no customer email on anything a business can read.
+  const withEmail = [...store].filter(([p, d]) => (p.startsWith("stampCards/") || p.startsWith("rewards/")) && d.customerEmail);
+  check("no email on new cards or rewards", withEmail.length === 0, withEmail.map(([p]) => p));
+  await new Promise((r) => setTimeout(r, 10)); // rememberEmailForOwner is fire-and-forget
+  check("email kept for the owner on users/{uid}", (store.get("users/amy") || {}).email === "amy@x.nz", store.get("users/amy"));
+  check("card still has the name", card("amy", "cafe").customerName === "AMY", card("amy", "cafe"));
+
+  // Older documents written before the change get cleaned by the daily job.
+  store.set("stampCards/old_cafe", { customerUid: "old", vendorId: "cafe", customerName: "Old", customerEmail: "old@x.nz", stamps: 2 });
+  store.set("rewards/oldR", { customerUid: "old", vendorId: "cafe", customerName: "Old", customerEmail: "old@x.nz", status: "redeemed" });
+  const cleaned = await fns._scrubCustomerEmails();
+  check("scrub removes old emails", cleaned === 2 && !store.get("stampCards/old_cafe").customerEmail && !store.get("rewards/oldR").customerEmail, { cleaned });
+  check("scrub keeps the email for the owner", (store.get("users/old") || {}).email === "old@x.nz", store.get("users/old"));
+  check("scrub keeps the rest of the card", store.get("stampCards/old_cafe").stamps === 2, store.get("stampCards/old_cafe"));
+  check("second scrub finds nothing", (await fns._scrubCustomerEmails()) === 0);
+
+  // An existing card with an email loses it on the next stamp.
+  store.get("stampCards/amy_cafe").customerEmail = "amy@x.nz";
+  await stamp("amy", "cafe");
+  check("next stamp clears an old card's email", !card("amy", "cafe").customerEmail, card("amy", "cafe"));
+
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
   process.exit(failures ? 1 : 0);
 })().catch((e) => { console.error("CRASH", e); process.exit(2); });

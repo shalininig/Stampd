@@ -369,6 +369,14 @@
       <button class="btn btn-reject" id="btn-delete-unconfirmed" style="display:none"></button>
       <div id="unconfirmed-out" style="margin-top:12px;font-size:.85rem"></div>
     </div>
+    <div class="panel" style="padding:18px 20px">
+      <strong>Stampd news list</strong>
+      <p style="margin:6px 0 12px;font-size:.85rem;opacity:.7">
+        Customers who ticked "Send me Stampd news" (sign-up or Profile). Only email these people about news,
+        and include an unsubscribe link in every email (NZ law). <span id="news-count"></span>
+      </p>
+      <button class="btn btn-copy" id="btn-news-csv">Download news list (CSV)</button>
+    </div>
     <div class="panel">
       <div class="toolbar">
         <input class="search" id="customer-search" placeholder="Search by name or email…">
@@ -632,6 +640,8 @@ let applications = [];   // vendorApplications docs
 let vendors      = [];   // vendors/{uid} docs
 let cards        = [];   // stampCards docs
 let rewards      = [];   // rewards docs
+let userEmails   = {};   // uid -> email, from users/{uid} (owner-only; cards no longer carry emails)
+let newsList     = [];   // customers who ticked "Stampd news" (opt-in), from users/{uid}
 
 async function loadAll() {
   try {
@@ -642,6 +652,20 @@ async function loadAll() {
       getDocs(collection(db, 'rewards')).catch(() => ({ docs: [] })),
     ]);
     rewards = rewSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Customer emails live on users/{uid} since 17 Oct (privacy). Loaded
+    // separately so a failure here never blocks the rest of the console.
+    try {
+      const uSnap = await getDocs(collection(db, 'users'));
+      userEmails = {};
+      newsList = [];
+      uSnap.docs.forEach(d => {
+        const u = d.data();
+        if (u.email) userEmails[d.id] = u.email;
+        if (u.newsOptIn === true && u.email) newsList.push({ uid: d.id, email: u.email, at: u.newsOptInAt, source: u.newsOptInSource || '' });
+      });
+      const nc = document.getElementById('news-count');
+      if (nc) nc.textContent = `${newsList.length} ${newsList.length === 1 ? 'person has' : 'people have'} said yes.`;
+    } catch (e) { console.warn('users load failed', e); }
 
     applications = appSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cards        = cardSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -893,6 +917,19 @@ document.getElementById('btn-vendors-csv').addEventListener('click', () => {
   URL.revokeObjectURL(a.href);
 });
 
+document.getElementById('btn-news-csv').addEventListener('click', () => {
+  const csvCell = x => `"${String(x ?? '').replace(/"/g, '""')}"`;
+  const nameOf = uid => (cards.find(c => c.customerUid === uid) || {}).customerName || '';
+  const rows = newsList.map(n => [n.email, nameOf(n.uid), n.at && n.at.toDate ? n.at.toDate().toISOString().slice(0, 10) : '', n.source].map(csvCell).join(','));
+  const cols = ['Email', 'Name', 'Said yes on', 'Where'];
+  const blob = new Blob([[cols.map(csvCell).join(','), ...rows].join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `stampd-news-list-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
 /* ── DETAILS DRAWER ── */
 function openDrawer(html) {
   document.getElementById('drawer-body').innerHTML = html;
@@ -981,7 +1018,7 @@ function showVendor(id) {
     <h3>Customers (${vc.length})</h3>
     ${vc.length ? `<table class="mini-table"><thead><tr><th>Customer</th><th>Card</th><th>Last</th></tr></thead><tbody>
       ${vc.slice(0, 50).map(c => `<tr>
-        <td>${esc(c.customerName || 'Customer')}<div class="biz-meta">${esc(c.customerEmail || '')}</div></td>
+        <td>${esc(c.customerName || 'Customer')}<div class="biz-meta">${esc(userEmails[c.customerUid] || c.customerEmail || '')}</div></td>
         <td>${c.stamps || 0} of ${c.stampGoal || v.stampGoal || 10}</td>
         <td>${ago(c.lastStampAt)}</td></tr>`).join('')}
       </tbody></table>${vc.length > 50 ? '<div class="biz-meta" style="margin-top:8px">Showing the 50 most recent.</div>' : ''}`
@@ -1035,7 +1072,7 @@ function customerList() {
     x.stamps += c.stamps || 0;
     x.last = Math.max(x.last, ms(c.lastStampAt));
     if (c.customerName && !x.name) x.name = c.customerName;
-    if (c.customerEmail && !x.email) x.email = c.customerEmail;
+    if (!x.email) x.email = userEmails[c.customerUid] || c.customerEmail || '';
   });
   rewards.forEach(r => {
     const x = by[r.customerUid]; if (!x) return;
@@ -1187,7 +1224,7 @@ function renderActivity() {
     ? waiting.slice(0, 100).map(r => {
         const days = Math.floor((Date.now() - ms(r.earnedAt)) / 86400000);
         return `<tr>
-          <td>${esc(r.customerName || 'Customer')}<div class="biz-meta">${esc(r.customerEmail || '')}</div></td>
+          <td>${esc(r.customerName || 'Customer')}<div class="biz-meta">${esc(userEmails[r.customerUid] || r.customerEmail || '')}</div></td>
           <td>${esc(r.vendorName || vName(r.vendorId) || '—')}</td>
           <td class="reward-text">${esc(r.reward || '')}</td>
           <td>${days >= 14 ? `<span class="pill warn">${ago(r.earnedAt)}</span>` : ago(r.earnedAt)}</td></tr>`;

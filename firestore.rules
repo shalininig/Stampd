@@ -113,9 +113,21 @@ service cloud.firestore {
     // their cards but must never write them — a client write would skip
     // PIN verification, the daily cap and the rate limit entirely.
     match /stampCards/{cardId} {
-      // Rules can't verify query filters, so this stays at "any signed-in
-      // user" — matching the previous behaviour. Tighten later if it matters.
-      allow read: if isSignedIn();
+      // Privacy (17 Oct): a card is readable only by its customer, its
+      // business and the owner. It used to be "any signed-in user", which
+      // let anyone list every customer's card. Queries must filter on
+      // customerUid or vendorId (every screen already does).
+      // Card IDs are "<customerUid>_<vendorId>", so a customer can look up
+      // their own card at a business even before it exists.
+      allow get: if isSignedIn()
+                 && (cardId.split('_')[0] == request.auth.uid
+                     || resource.data.customerUid == request.auth.uid
+                     || resource.data.vendorId == request.auth.uid
+                     || isOwner());
+      allow list: if isSignedIn()
+                  && (resource.data.customerUid == request.auth.uid
+                      || resource.data.vendorId == request.auth.uid
+                      || isOwner());
 
       allow create, update: if false;
 
@@ -142,7 +154,11 @@ service cloud.firestore {
     // survives the card resetting to zero. The customer and the vendor
     // can see it; only the vendor or owner may mark it redeemed.
     match /rewards/{rewardId} {
-      allow read: if isSignedIn();
+      // Privacy (17 Oct): only the customer, the business and the owner.
+      allow read: if isSignedIn()
+                  && (resource.data.customerUid == request.auth.uid
+                      || resource.data.vendorId == request.auth.uid
+                      || isOwner());
 
       allow create: if false;
 
@@ -170,7 +186,9 @@ service cloud.firestore {
     // user could read/write any customer profile; now scoped to the owner
     // of the record (doc ID is the customer's Auth UID).
     match /customers/{customerId} {
-      allow read:  if isSignedIn();
+      // Holds name, email and phone — the customer and the owner only
+      // (was "any signed-in user").
+      allow read:  if isSignedIn() && request.auth.uid == customerId;
       allow write: if isSignedIn() && request.auth.uid == customerId;
       allow read, write: if isOwner();
     }

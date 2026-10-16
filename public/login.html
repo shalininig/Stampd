@@ -102,6 +102,8 @@ body {
 .screen-title { font-family: 'Bebas Neue', cursive; font-size: 1.8rem; letter-spacing: 2px; background: linear-gradient(135deg, var(--fire), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .form-body { flex: 1; padding: 10px 0; }
 .form-group { margin-bottom: 16px; }
+.news-opt { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 8px; font-size: 0.85rem; line-height: 1.4; opacity: 0.8; cursor: pointer; }
+.news-opt input { width: 18px; height: 18px; margin-top: 1px; accent-color: #FF3008; flex-shrink: 0; }
 .form-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 7px; display: block; }
 .form-input { width: 100%; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 16px; color: var(--white); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.95rem; font-weight: 600; outline: none; transition: all 0.2s; }
 .form-input::placeholder { color: rgba(255,255,255,0.2); }
@@ -217,9 +219,13 @@ body {
         <label class="form-label">Password</label>
         <input class="form-input" type="password" id="reg-pass" placeholder="Min. 6 characters" autocomplete="new-password">
       </div>
+      <label class="news-opt">
+        <input type="checkbox" id="reg-news">
+        <span>Send me Stampd news — new features and updates. Unsubscribe any time.</span>
+      </label>
       <button class="btn-primary" id="btn-signup" onclick="handleSignup()">🚀 Create My Account Free</button>
       <div class="toast" id="signup-toast"></div>
-      <div class="terms-txt">By signing up you agree to our <span>Terms of Service</span> and <span>Privacy Policy</span></div>
+      <div class="terms-txt">By signing up you agree to our <a href="/terms.html" target="_blank" rel="noopener"><span>Terms of Service</span></a> and <a href="/privacy-policy.html" target="_blank" rel="noopener"><span>Privacy Policy</span></a></div>
     </div>
   </div>
 
@@ -351,6 +357,7 @@ body {
     const email = document.getElementById('reg-email').value.trim();
     const phone = document.getElementById('reg-phone').value.trim();
     const pass  = document.getElementById('reg-pass').value;
+    const news  = document.getElementById('reg-news').checked; // Stampd news: opt-in only
     hideToast('signup-toast');
     if (!name || !email || !pass) { showToast('signup-toast', '⚠️ Please fill in your name, email and password.'); return; }
     if (pass.length < 6) { showToast('signup-toast', '⚠️ Password must be at least 6 characters.'); return; }
@@ -359,6 +366,13 @@ body {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(cred.user, { displayName: name });
       await saveCustomerProfile(cred.user.uid, name, email, phone);
+      if (news) {
+        try {
+          await setDoc(doc(db, 'users', cred.user.uid),
+            { newsOptIn: true, newsOptInAt: serverTimestamp(), newsOptInSource: 'web-signup', email },
+            { merge: true });
+        } catch (e) { console.warn('news opt-in', e); }
+      }
       // Confirms the address is real — it's how they get back in if they
       // forget their password, and it keeps bot accounts out.
       try { await callFn('sendVerificationEmail'); }
