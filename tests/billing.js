@@ -145,6 +145,21 @@ const nowS = () => Math.floor(Date.now() / 1000);
   check("nightly: expired trial marked trial_ended", store.get("vendors/v4").subscriptionStatus === "trial_ended", store.get("vendors/v4"));
   check("nightly: live trial untouched", store.get("vendors/v2").subscriptionStatus === "trialing", store.get("vendors/v2"));
 
+  // 9b. Cancelled during the trial (18 Oct). Newer Stripe API: cancel_at set,
+  // cancel_at_period_end false. Must still read as cancelled.
+  const sub1 = S.subs.find((s) => s.id === "sub_1");
+  sub1.cancel_at = sub1.trial_end;
+  await fns.syncMyBilling.run({ ...as("v1"), data: {} });
+  v = store.get("vendors/v1");
+  check("trial cancel (cancel_at) → cancelAtPeriodEnd", v.cancelAtPeriodEnd === true && v.cancelAt && v.cancelAt.toMillis() === sub1.trial_end * 1000, v);
+  delete sub1.cancel_at;
+  sub1.cancel_at_period_end = true;
+  await fns.syncMyBilling.run({ ...as("v1"), data: {} });
+  check("trial cancel (cancel_at_period_end) → cancelAtPeriodEnd", store.get("vendors/v1").cancelAtPeriodEnd === true, store.get("vendors/v1"));
+  sub1.cancel_at_period_end = false;
+  await fns.syncMyBilling.run({ ...as("v1"), data: {} });
+  check("undo cancel → not cancelled", store.get("vendors/v1").cancelAtPeriodEnd === false && !store.get("vendors/v1").cancelAt, store.get("vendors/v1"));
+
   // 10. Cancelled in portal → canceled after period; rotating PIN stops (canRotate).
   S.subs.find((s) => s.id === "sub_1").status = "canceled";
   await fns.dailyBillingSync.run({});

@@ -147,7 +147,10 @@ function vendorFieldsFromSubscription(admin, sub) {
     plan,
     trialEndsAt: ts(sub.trial_end),
     currentPeriodEnd: ts(periodEnd),
-    cancelAtPeriodEnd: !!sub.cancel_at_period_end,
+    // Newer Stripe API versions record a portal cancellation as a date
+    // (cancel_at) instead of cancel_at_period_end — treat either as cancelled.
+    cancelAtPeriodEnd: !!sub.cancel_at_period_end || !!sub.cancel_at,
+    cancelAt: ts(sub.cancel_at || (sub.cancel_at_period_end ? periodEnd : null)),
     subscriptionSince: ts(sub.start_date),
   };
 }

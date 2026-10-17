@@ -1469,12 +1469,17 @@ window.loadStats = async function() {
       ? '<button class="send-btn" onclick="manageBilling(this)">Manage billing</button>' : '';
     let cls = 'good', title = '', body = '';
 
-    if (hasSub && st === 'trialing') {
+    if (hasSub && st === 'trialing' && v.cancelAtPeriodEnd) {
+      // Cancelled during the free trial (18 Oct testing: this used to still
+      // say "Then NZ$49 + GST a month").
+      cls = 'warn'; title = `${info ? info.name : 'Your'} plan — cancelled`;
+      body = `You've cancelled. Everything keeps working until <strong>${fmtDay(v.cancelAt) || trialEnd}</strong>, and nothing will be charged. Changed your mind? Use Manage billing to undo it.`;
+    } else if (hasSub && st === 'trialing') {
       title = `Your plan: ${info ? info.name : ''} — free until ${trialEnd}`;
       body = `Then NZ$${info ? info.price : ''} + GST a month. Nothing is charged before ${trialEnd}. Change plan, update your card or cancel any time in Manage billing.`;
     } else if (hasSub && st === 'active' && v.cancelAtPeriodEnd) {
       cls = 'warn'; title = `${info ? info.name : 'Your'} plan — cancelled`;
-      body = `You've cancelled. Everything keeps working until <strong>${fmtDay(v.currentPeriodEnd)}</strong>. Changed your mind? Use Manage billing to undo it.`;
+      body = `You've cancelled. Everything keeps working until <strong>${fmtDay(v.cancelAt) || fmtDay(v.currentPeriodEnd)}</strong>. Changed your mind? Use Manage billing to undo it.`;
     } else if (hasSub && st === 'active') {
       title = `${info ? info.name : 'Your'} plan — NZ$${info ? info.price : ''} + GST a month`;
       body = v.currentPeriodEnd ? `Next payment on <strong>${fmtDay(v.currentPeriodEnd)}</strong>.` : 'You\'re all set.';
