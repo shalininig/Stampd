@@ -1547,7 +1547,7 @@ window.loadStats = async function() {
           const real = (invoices || []).filter((i) => i.amount > 0);
           const rows = real.length
             ? real.map((i) => `<tr><td>${day(i.date)}</td><td>${money(i.amount, i.currency)}</td><td><span class="pay-${i.status === 'paid' ? 'ok' : 'bad'}">${i.status === 'paid' ? 'Paid' : i.status === 'open' ? 'Not paid yet' : esc(i.status)}</span></td><td>${i.pdf ? `<a href="${esc(i.pdf)}" target="_blank" rel="noopener">PDF</a>` : ''}</td></tr>`).join('')
-            : `<tr><td colspan="4" style="color:var(--muted)">No payments yet${v.trialEndsAt && st === 'trialing' ? ` — your first is on ${trialEnd}` : ''}.</td></tr>`;
+            : `<tr><td colspan="4" style="color:var(--muted)">No payments yet${v.trialEndsAt && st === 'trialing' && !v.cancelAtPeriodEnd ? ` — your first is on ${trialEnd}` : ''}.</td></tr>`;
           det.innerHTML = `<div class="card bill-card">
             <div class="card-header"><div class="card-title">💳 Card on file</div></div>
             <p style="margin:0 0 6px">${cardLine}</p>
